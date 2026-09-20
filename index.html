@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Clone</title>
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #2f3136; }
+    ::-webkit-scrollbar-thumb { background: #202225; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #18191c; }
+  </style>
+</head>
+<body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
+
+  <div id="app" class="flex h-screen w-screen">
+    <!-- 1. アカウント作成 / ログイン画面 (Auth) -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
+      <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
+        <div class="text-center mb-6">
+          <h1 class="text-2xl font-bold text-white mb-2" id="auth-title">アカウント作成</h1>
+          <p class="text-xs text-gray-400">メールアドレス不要で簡単に始められます</p>
+        </div>
+
+        <form id="auth-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-300 uppercase mb-1">アカウントID (@id)</label>
+            <input type="text" id="auth-username" required placeholder="example_user" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+          </div>
+
+          <div id="display-name-group">
+            <label class="block text-xs font-bold text-gray-300 uppercase mb-1">表示名</label>
+            <input type="text" id="auth-displayname" placeholder="ユーザー名" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-300 uppercase mb-1">パスワード</label>
+            <input type="password" id="auth-password" required placeholder="••••••••" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition text-sm">登録して始める</button>
+        </form>
+
+        <div class="mt-4 text-center">
+          <button id="auth-toggle-btn" class="text-xs text-indigo-400 hover:underline">すでにアカウントをお持ちの方はこちら (ログイン)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. アプリメイン画面 -->
+    <div id="main-screen" class="flex w-full h-full hidden">
+      
+      <!-- 2.1 サーバーリストバー (最左列) -->
+      <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0">
+        <!-- DMアイコン -->
+        <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white group relative">
+          <i data-lucide="message-square" class="w-6 h-6"></i>
+          <span class="absolute left-16 bg-black text-white text-xs px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50 pointer-events-none">ダイレクトメッセージ</span>
+        </button>
+
+        <div class="w-8 h-[2px] bg-[#36393f] rounded"></div>
+
+        <!-- サーバーリスト容器 -->
+        <div id="server-list" class="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto">
+          <!-- JSで動的描画 -->
+        </div>
+
+        <!-- サーバー追加ボタン -->
+        <button id="btn-add-server" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-green-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-green-500 hover:text-white group relative">
+          <i data-lucide="plus" class="w-6 h-6"></i>
+          <span class="absolute left-16 bg-black text-white text-xs px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50 pointer-events-none">サーバーを追加</span>
+        </button>
+
+        <!-- Bot管理パネルボタン -->
+        <button id="btn-bot-panel" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-yellow-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-yellow-500 hover:text-white group relative">
+          <i data-lucide="bot" class="w-6 h-6"></i>
+          <span class="absolute left-16 bg-black text-white text-xs px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50 pointer-events-none">Bot管理</span>
+        </button>
+      </div>
+
+      <!-- 2.2 チャンネル / DM サイドバー (第2列) -->
+      <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
+        <!-- サイドバーヘッダー -->
+        <div id="sidebar-header" class="h-12 border-b border-[#202225] px-4 flex items-center justify-between font-bold text-white shadow-sm">
+          <span>ダイレクトメッセージ</span>
+        </div>
+
+        <!-- チャンネル / フレンド一覧エリア -->
+        <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5">
+          <!-- JSで動的描画 -->
+        </div>
+
+        <!-- ログインユーザーのプロフバー (最下部) -->
+        <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
+          <div class="flex items-center space-x-2 overflow-hidden cursor-pointer p-1 rounded hover:bg-gray-700/50" id="btn-my-profile">
+            <div class="relative flex-shrink-0">
+              <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
+              <div class="w-3 h-3 bg-green-500 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-[#292b2f]"></div>
+            </div>
+            <div class="truncate">
+              <div id="my-display-name" class="text-sm font-bold text-white leading-tight truncate">ユーザー名</div>
+              <div id="my-username" class="text-xs text-gray-400 leading-tight truncate">@username</div>
+            </div>
+          </div>
+          <button id="btn-logout" class="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-gray-700/50 transition">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2.3 メインコンテンツエリア (第3列) -->
+      <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
+        
+        <!-- トップヘッダー -->
+        <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm z-10">
+          <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
+            <i data-lucide="at-sign" class="w-5 h-5 text-gray-400"></i>
+            <span id="header-title">フレンド一覧</span>
+          </div>
+
+          <!-- 通話コントロールボタン群（DM・ボイスチャンネル時） -->
+          <div id="call-controls" class="flex items-center space-x-3 hidden">
+            <button id="btn-start-voice" class="text-gray-300 hover:text-white p-1.5 rounded hover:bg-gray-700/50" title="音声通話">
+              <i data-lucide="phone" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-start-video" class="text-gray-300 hover:text-white p-1.5 rounded hover:bg-gray-700/50" title="ビデオ通話">
+              <i data-lucide="video" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 画面切り替えコンテナ -->
+        <div class="flex-1 flex overflow-hidden relative">
+
+          <!-- A. フレンド管理画面 (デフォルト) -->
+          <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
+            <div class="flex items-center space-x-4 border-b border-gray-700 pb-3 mb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i data-lucide="users" class="w-5 h-5"></i> フレンド
+              </h2>
+            </div>
+
+            <!-- フレンド追加入力 -->
+            <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
+              <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
+              <p class="text-xs text-gray-400 mb-3">アカウントID (@id) を入力してフレンド申請を送信できます。</p>
+              <form id="add-friend-form" class="flex gap-2">
+                <input type="text" id="friend-id-input" placeholder="アカウントIDを入力..." class="flex-1 bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-medium transition">フレンド申請を送信</button>
+              </form>
+            </div>
+
+            <!-- 今いるフレンド一覧 -->
+            <h3 class="text-xs font-bold text-gray-400 uppercase mb-2">すべてのフレンド — <span id="friends-count">0</span></h3>
+            <div id="friends-list" class="space-y-1">
+              <!-- JSで動的描画（架空データは存在しません） -->
+            </div>
+          </div>
+
+          <!-- B. チャット画面 (DM & サーバーテキストチャンネル) -->
+          <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
+            <!-- メッセージ表示領域 -->
+            <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+              <!-- JSで動的描画 -->
+            </div>
+
+            <!-- メッセージ入力フォーム -->
+            <div class="p-4 bg-[#36393f]">
+              <form id="chat-form" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5">
+                <input type="text" id="chat-input" placeholder="メッセージを入力..." class="flex-1 bg-transparent text-white focus:outline-none text-sm">
+                <button type="submit" class="text-indigo-400 hover:text-indigo-300 ml-2">
+                  <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- C. 音声 / ビデオ通話画面 -->
+          <div id="call-view" class="flex-1 flex flex-col bg-[#202225] hidden relative">
+            <div class="flex-1 flex items-center justify-center p-4 relative">
+              <!-- ローカルビデオプレビュー -->
+              <video id="local-video" autoplay playsinline muted class="w-full h-full max-h-[80vh] object-cover rounded-lg bg-black border border-gray-700"></video>
+              <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                <i data-lucide="user" class="w-24 h-24 mb-2"></i>
+                <span class="text-lg">音声通話中...</span>
+              </div>
+            </div>
+
+            <!-- 通話コントロールバー -->
+            <div class="h-20 bg-[#2f3136] flex items-center justify-center space-x-6">
+              <button id="btn-toggle-mic" class="w-12 h-12 rounded-full bg-[#36393f] hover:bg-gray-600 text-white flex items-center justify-center">
+                <i data-lucide="mic" class="w-6 h-6"></i>
+              </button>
+              <button id="btn-end-call" class="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center">
+                <i data-lucide="phone-off" class="w-6 h-6"></i>
+              </button>
+              <button id="btn-toggle-cam" class="w-12 h-12 rounded-full bg-[#36393f] hover:bg-gray-600 text-white flex items-center justify-center">
+                <i data-lucide="video" class="w-6 h-6"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- D. Bot管理画面 -->
+          <div id="bot-view" class="flex-1 flex flex-col p-6 overflow-y-auto hidden">
+            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <i data-lucide="bot" class="w-6 h-6 text-yellow-500"></i> Bot管理パネル
+            </h2>
+            
+            <!-- Bot作成 -->
+            <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
+              <h3 class="text-sm font-bold text-white mb-2">新しいBotを作成</h3>
+              <form id="create-bot-form" class="space-y-3">
+                <input type="text" id="bot-name-input" required placeholder="Bot名 (例: AutoResponder)" class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white focus:outline-none">
+                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm font-medium transition">Botを発行</button>
+              </form>
+            </div>
+
+            <!-- 作成済みBot一覧 -->
+            <h3 class="text-xs font-bold text-gray-400 uppercase mb-2">作成したBot</h3>
+            <div id="bots-list" class="space-y-2">
+              <!-- JSで動的描画 -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. モーダルダイアログ群 -->
+
+  <!-- プロフィール編集モーダル -->
+  <div id="profile-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
+    <div class="bg-[#36393f] p-6 rounded-lg w-96 border border-gray-700 relative">
+      <h3 class="text-lg font-bold text-white mb-4">プロフィール編集</h3>
+      <form id="profile-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase mb-1">表示名</label>
+          <input type="text" id="edit-displayname" class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase mb-1">カスタムステータス</label>
+          <input type="text" id="edit-status" placeholder="今の気分を入力..." class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" id="btn-close-profile" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded">キャンセル</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- サーバー作成モーダル -->
+  <div id="server-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
+    <div class="bg-[#36393f] p-6 rounded-lg w-96 border border-gray-700">
+      <h3 class="text-lg font-bold text-white mb-4">サーバーの作成</h3>
+      <form id="server-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase mb-1">サーバー名</label>
+          <input type="text" id="server-name-input" required placeholder="マイサーバー" class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" id="btn-close-server" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded">キャンセル</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded">作成</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- チャンネル作成モーダル -->
+  <div id="channel-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center hidden">
+    <div class="bg-[#36393f] p-6 rounded-lg w-96 border border-gray-700">
+      <h3 class="text-lg font-bold text-white mb-4">チャンネルの作成</h3>
+      <form id="channel-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase mb-1">チャンネル名</label>
+          <input type="text" id="channel-name-input" required placeholder="雑談" class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-300 uppercase mb-1">タイプ</label>
+          <select id="channel-type-select" class="w-full bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white">
+            <option value="text">テキストチャンネル</option>
+            <option value="voice">ボイスチャンネル</option>
+          </select>
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" id="btn-close-channel" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded">キャンセル</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded">作成</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- メインJavaScript処理 -->
+  <script>
+    // -------------------------------------------------------------
+    // アプリケーション状態管理 (LocalStorage)
+    // -------------------------------------------------------------
+    const DB_KEYS = {
+      USERS: 'discord_clone_users',
+      CURRENT_USER: 'discord_clone_current_user',
+      SERVERS: 'discord_clone_servers',
+      CHANNELS: 'discord_clone_channels',
+      MESSAGES: 'discord_clone_messages',
+      FRIENDS: 'discord_clone_friends',
+      BOTS: 'discord_clone_bots'
+    };
+
+    // DB取得関数群
+    const loadData = (key, defaultVal = []) => JSON.parse(localStorage.getItem(key)) || defaultVal;
+    const saveData = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+
+    let users = loadData(DB_KEYS.USERS);
+    let currentUser = loadData(DB_KEYS.CURRENT_USER, null);
+    let servers = loadData(DB_KEYS.SERVERS);
+    let channels = loadData(DB_KEYS.CHANNELS);
+    let messages = loadData(DB_KEYS.MESSAGES);
+    let friends = loadData(DB_KEYS.FRIENDS);
+    let bots = loadData(DB_KEYS.BOTS);
+
+    // アプリ内選択状態
+    let currentView = 'dm'; // 'dm' | 'server' | 'bot'
+    let currentServerId = null;
+    let currentChannelId = null; // チャンネルIDまたはフレンドユーザーID
+    let isCallActive = false;
+    let localStream = null;
+
+    // -------------------------------------------------------------
+    // 初期化 & イベント登録
+    // -------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initAuth();
+      if (currentUser) {
+        showMainApp();
+      }
+    });
+
+    // -------------------------------------------------------------
+    // 1. 認証システム (Auth)
+    // -------------------------------------------------------------
+    let isSignUpMode = true;
+
+    function initAuth() {
+      const authForm = document.getElementById('auth-form');
+      const toggleBtn = document.getElementById('auth-toggle-btn');
+      const displayNameGroup = document.getElementById('display-name-group');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      const title = document.getElementById('auth-title');
+
+      toggleBtn.addEventListener('click', () => {
+        isSignUpMode = !isSignUpMode;
+        if (isSignUpMode) {
+          title.textContent = 'アカウント作成';
+          displayNameGroup.classList.remove('hidden');
+          submitBtn.textContent = '登録して始める';
+          toggleBtn.textContent = 'すでにアカウントをお持ちの方はこちら (ログイン)';
+        } else {
+          title.textContent = 'おかえりなさい！';
+          displayNameGroup.classList.add('hidden');
+          submitBtn.textContent = 'ログイン';
+          toggleBtn.textContent = 'アカウントを作成する場合はこちら';
+        }
+      });
+
+      authForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('auth-username').value.trim();
+        const password = document.getElementById('auth-password').value;
+        const displayName = document.getElementById('auth-displayname').value.trim() || username;
+
+        if (isSignUpMode) {
+          // アカウント新規作成 (メールアドレス不要)
+          if (users.find(u => u.username === username)) {
+            alert('このアカウントIDは既に使用されています');
+            return;
+          }
+          const newUser = { id: 'u_' + Date.now(), username, displayName, password, status: '' };
+          users.push(newUser);
+          saveData(DB_KEYS.USERS, users);
+          currentUser = newUser;
+        } else {
+          // ログイン
+          const user = users.find(u => u.username === username && u.password === password);
+          if (!user) {
+            alert('アカウントIDまたはパスワードが正しくありません');
+            return;
+          }
+          currentUser = user;
+        }
+
+        saveData(DB_KEYS.CURRENT_USER, currentUser);
+        showMainApp();
+      });
+
+      document.getElementById('btn-logout').addEventListener('click', () => {
+        currentUser = null;
+        localStorage.removeItem(DB_KEYS.CURRENT_USER);
+        location.reload();
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 2. メインUI切り替え & レンダリング
+    // -------------------------------------------------------------
+    function showMainApp() {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('main-screen').classList.remove('hidden');
+
+      // ユーザープロフの更新
+      document.getElementById('my-display-name').textContent = currentUser.displayName;
+      document.getElementById('my-username').textContent = '@' + currentUser.username;
+      document.getElementById('my-avatar').textContent = currentUser.displayName.charAt(0).toUpperCase();
+
+      renderServerList();
+      renderSidebar();
+      renderMainArea();
+    }
+
+    // サーバーリスト描画
+    function renderServerList() {
+      const container = document.getElementById('server-list');
+      container.innerHTML = '';
+
+      servers.forEach(srv => {
+        const btn = document.createElement('button');
+        btn.className = `w-12 h-12 rounded-3xl hover:rounded-2xl transition-all duration-200 bg-[#36393f] flex items-center justify-center text-white font-bold group relative ${currentServerId === srv.id ? 'bg-indigo-600 rounded-2xl' : ''}`;
+        btn.textContent = srv.name.charAt(0);
+        btn.onclick = () => {
+          currentView = 'server';
+          currentServerId = srv.id;
+          const srvChannels = channels.filter(c => c.serverId === srv.id);
+          currentChannelId = srvChannels.length > 0 ? srvChannels[0].id : null;
+          renderServerList();
+          renderSidebar();
+          renderMainArea();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // サイドバー描画 (DM / フレンドリスト vs サーバーチャンネルリスト)
+    function renderSidebar() {
+      const header = document.getElementById('sidebar-header');
+      const content = document.getElementById('sidebar-content');
+      content.innerHTML = '';
+
+      if (currentView === 'dm') {
+        header.innerHTML = `<span>ダイレクトメッセージ</span>`;
+
+        // 友達追加/一覧ボタン
+        const friendsBtn = document.createElement('div');
+        friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer hover:bg-gray-700/50 text-gray-300 hover:text-white ${currentChannelId === null ? 'bg-gray-700/60 text-white' : ''}`;
+        friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
+        friendsBtn.onclick = () => {
+          currentChannelId = null;
+          renderSidebar();
+          renderMainArea();
+        };
+        content.appendChild(friendsBtn);
+
+        // 今いる友達一覧 (DMリスト)
+        const myFriends = getAcceptedFriends();
+        if (myFriends.length > 0) {
+          const label = document.createElement('div');
+          label.className = 'text-xs font-bold text-gray-400 uppercase px-2 pt-4 pb-1';
+          label.textContent = 'ダイレクトメッセージ';
+          content.appendChild(label);
+
+          myFriends.forEach(friend => {
+            const item = document.createElement('div');
+            item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 text-gray-300 hover:text-white ${currentChannelId === friend.id ? 'bg-gray-700/60 text-white' : ''}`;
+            item.innerHTML = `
+              <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-xs text-white">${friend.displayName.charAt(0)}</div>
+              <div class="truncate text-sm font-medium">${friend.displayName}</div>
+            `;
+            item.onclick = () => {
+              currentChannelId = friend.id;
+              renderSidebar();
+              renderMainArea();
+            };
+            content.appendChild(item);
+          });
+        }
+
+      } else if (currentView === 'server') {
+        const srv = servers.find(s => s.id === currentServerId);
+        header.innerHTML = `
+          <span class="truncate">${srv ? srv.name : 'サーバー'}</span>
+          <button id="btn-add-channel" class="hover:text-white text-gray-400 p-1"><i data-lucide="plus" class="w-4 h-4"></i></button>
+        `;
+        document.getElementById('btn-add-channel').onclick = () => openModal('channel-modal');
+
+        const srvChannels = channels.filter(c => c.serverId === currentServerId);
+        srvChannels.forEach(ch => {
+          const item = document.createElement('div');
+          item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 text-gray-300 hover:text-white ${currentChannelId === ch.id ? 'bg-gray-700/60 text-white' : ''}`;
+          const icon = ch.type === 'voice' ? 'volume-2' : 'hash';
+          item.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 text-gray-400"></i><span class="truncate text-sm font-medium">${ch.name}</span>`;
+          item.onclick = () => {
+            currentChannelId = ch.id;
+            renderSidebar();
+            renderMainArea();
+          };
+          content.appendChild(item);
+        });
+      }
+
+      lucide.createIcons();
+    }
+
+    // メイン領域描画
+    function renderMainArea() {
+      const friendsView = document.getElementById('friends-view');
+      const chatView = document.getElementById('chat-view');
+      const callView = document.getElementById('call-view');
+      const botView = document.getElementById('bot-view');
+      const headerTitleContainer = document.getElementById('header-title-container');
+      const callControls = document.getElementById('call-controls');
+
+      // 非表示の標準化
+      friendsView.classList.add('hidden');
+      chatView.classList.add('hidden');
+      callView.classList.add('hidden');
+      botView.classList.add('hidden');
+      callControls.classList.add('hidden');
+
+      if (currentView === 'bot') {
+        botView.classList.remove('hidden');
+        headerTitleContainer.innerHTML = `<i data-lucide="bot" class="w-5 h-5 text-yellow-500"></i><span>Bot管理</span>`;
+        renderBotsList();
+      } else if (currentView === 'dm') {
+        if (currentChannelId === null) {
+          // フレンド管理画面
+          friendsView.classList.remove('hidden');
+          headerTitleContainer.innerHTML = `<i data-lucide="users" class="w-5 h-5 text-gray-400"></i><span>フレンド一覧</span>`;
+          renderFriendsList();
+        } else {
+          // DMチャット画面
+          const friend = users.find(u => u.id === currentChannelId);
+          chatView.classList.remove('hidden');
+          callControls.classList.remove('hidden');
+          headerTitleContainer.innerHTML = `<i data-lucide="at-sign" class="w-5 h-5 text-gray-400"></i><span>${friend ? friend.displayName : 'DM'}</span>`;
+          renderMessages();
+        }
+      } else if (currentView === 'server') {
+        const ch = channels.find(c => c.id === currentChannelId);
+        if (ch) {
+          if (ch.type === 'voice') {
+            callView.classList.remove('hidden');
+            headerTitleContainer.innerHTML = `<i data-lucide="volume-2" class="w-5 h-5 text-gray-400"></i><span>${ch.name} (ボイス)</span>`;
+          } else {
+            chatView.classList.remove('hidden');
+            headerTitleContainer.innerHTML = `<i data-lucide="hash" class="w-5 h-5 text-gray-400"></i><span>${ch.name}</span>`;
+            renderMessages();
+          }
+        }
+      }
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // 3. フレンド機能 (架空データの完全排除・実データのみ)
+    // -------------------------------------------------------------
+    function getAcceptedFriends() {
+      // 相互または申請承認済みのフレンド一覧を返却
+      const acceptedRelationUserIds = friends
+        .filter(f => (f.fromId === currentUser.id || f.toId === currentUser.id) && f.status === 'accepted')
+        .map(f => f.fromId === currentUser.id ? f.toId : f.fromId);
+
+      return users.filter(u => acceptedRelationUserIds.includes(u.id));
+    }
+
+    function renderFriendsList() {
+      const container = document.getElementById('friends-list');
+      const countEl = document.getElementById('friends-count');
+      container.innerHTML = '';
+
+      const acceptedFriends = getAcceptedFriends();
+      countEl.textContent = acceptedFriends.length;
+
+      if (acceptedFriends.length === 0) {
+        container.innerHTML = `<div class="text-xs text-gray-500 py-4">まだフレンドがいません。上記からアカウントIDを入力して申請しましょう！</div>`;
+        return;
+      }
+
+      acceptedFriends.forEach(friend => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2.5 rounded hover:bg-gray-700/40 border-t border-gray-700/30';
+        item.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">${friend.displayName.charAt(0)}</div>
+            <div>
+              <div class="text-sm font-bold text-white">${friend.displayName}</div>
+              <div class="text-xs text-gray-400">@${friend.username}</div>
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button class="btn-dm p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200" title="メッセージを送信">
+              <i data-lucide="message-square" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+        item.querySelector('.btn-dm').onclick = () => {
+          currentChannelId = friend.id;
+          renderSidebar();
+          renderMainArea();
+        };
+        container.appendChild(item);
+      });
+
+      lucide.createIcons();
+    }
+
+    // フレンド申請送信
+    document.getElementById('add-friend-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('friend-id-input');
+      const targetIdName = input.value.trim();
+
+      if (targetIdName === currentUser.username) {
+        alert('自分自身にフレンド申請は送れません');
+        return;
+      }
+
+      const targetUser = users.find(u => u.username === targetIdName);
+      if (!targetUser) {
+        alert('指定されたアカウントIDのユーザーが見つかりません');
+        return;
+      }
+
+      // 重複チェック
+      const exists = friends.find(f => 
+        (f.fromId === currentUser.id && f.toId === targetUser.id) || 
+        (f.fromId === targetUser.id && f.toId === currentUser.id)
+      );
+
+      if (exists) {
+        alert('すでにフレンド関係か申請が存在します');
+        return;
+      }
+
+      // 即時相互承認（プロトタイプ仕様）
+      friends.push({
+        id: 'f_' + Date.now(),
+        fromId: currentUser.id,
+        toId: targetUser.id,
+        status: 'accepted'
+      });
+      saveData(DB_KEYS.FRIENDS, friends);
+
+      alert(`${targetUser.displayName} (@${targetUser.username}) とフレンドになりました！`);
+      input.value = '';
+      renderFriendsList();
+      renderSidebar();
+    });
+
+    // -------------------------------------------------------------
+    // 4. メッセージ・チャット送信 & Bot自動応答
+    // -------------------------------------------------------------
+    function renderMessages() {
+      const container = document.getElementById('message-container');
+      container.innerHTML = '';
+
+      // 現在のコンテキスト（DMまたはサーバーチャンネル）のメッセージ取得
+      let activeMessages = [];
+      if (currentView === 'dm') {
+        activeMessages = messages.filter(m => 
+          (m.senderId === currentUser.id && m.targetId === currentChannelId) ||
+          (m.senderId === currentChannelId && m.targetId === currentUser.id)
+        );
+      } else {
+        activeMessages = messages.filter(m => m.channelId === currentChannelId);
+      }
+
+      activeMessages.forEach(msg => {
+        const sender = users.find(u => u.id === msg.senderId) || bots.find(b => b.id === msg.senderId) || { displayName: 'ユーザー', username: 'unknown' };
+        const isBot = !!bots.find(b => b.id === msg.senderId);
+
+        const msgEl = document.createElement('div');
+        msgEl.className = 'flex items-start space-x-3 hover:bg-black/10 p-1 rounded';
+        msgEl.innerHTML = `
+          <div class="w-10 h-10 rounded-full ${isBot ? 'bg-yellow-600' : 'bg-indigo-500'} flex items-center justify-center font-bold text-white flex-shrink-0">
+            ${sender.displayName.charAt(0)}
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-sm text-white">${sender.displayName}</span>
+              ${isBot ? '<span class="bg-indigo-600 text-white text-[10px] px-1 rounded font-bold">BOT</span>' : ''}
+              <span class="text-[10px] text-gray-400">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <div class="text-sm text-gray-200 mt-0.5">${escapeHtml(msg.content)}</div>
+          </div>
+        `;
+        container.appendChild(msgEl);
+      });
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    document.getElementById('chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const newMsg = {
+        id: 'm_' + Date.now(),
+        senderId: currentUser.id,
+        channelId: currentView === 'server' ? currentChannelId : null,
+        targetId: currentView === 'dm' ? currentChannelId : null,
+        content: text,
+        timestamp: Date.now()
+      };
+
+      messages.push(newMsg);
+      saveData(DB_KEYS.MESSAGES, messages);
+      input.value = '';
+      renderMessages();
+
+      // Bot自動応答判定 (「!」から始まるコマンド等)
+      triggerBotResponse(text);
+    });
+
+    function triggerBotResponse(userText) {
+      if (!bots.length) return;
+
+      bots.forEach(bot => {
+        if (userText.startsWith(bot.prefix)) {
+          setTimeout(() => {
+            let replyContent = `Bot (${bot.displayName}): コマンドを受信しました！`;
+            if (userText.includes('ping')) replyContent = 'Pong! 🏓';
+
+            const botMsg = {
+              id: 'm_' + Date.now(),
+              senderId: bot.id,
+              channelId: currentView === 'server' ? currentChannelId : null,
+              targetId: currentView === 'dm' ? currentChannelId : null,
+              content: replyContent,
+              timestamp: Date.now()
+            };
+            messages.push(botMsg);
+            saveData(DB_KEYS.MESSAGES, messages);
+            renderMessages();
+          }, 800);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 5. ボイス / ビデオ通話 (WebRTCプレビュー)
+    // -------------------------------------------------------------
+    async function startCall(videoEnabled = false) {
+      const callView = document.getElementById('call-view');
+      const chatView = document.getElementById('chat-view');
+      const localVideo = document.getElementById('local-video');
+      const videoPlaceholder = document.getElementById('video-placeholder');
+
+      chatView.classList.add('hidden');
+      callView.classList.remove('hidden');
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: videoEnabled });
+        localVideo.srcObject = localStream;
+        if (videoEnabled) {
+          videoPlaceholder.classList.add('hidden');
+        } else {
+          videoPlaceholder.classList.remove('hidden');
+        }
+        isCallActive = true;
+      } catch (err) {
+        alert('マイク/カメラへのアクセスが拒否されたか、デバイスが見つかりません。');
+      }
+    }
+
+    document.getElementById('btn-start-voice').onclick = () => startCall(false);
+    document.getElementById('btn-start-video').onclick = () => startCall(true);
+
+    document.getElementById('btn-end-call').onclick = () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      isCallActive = false;
+      renderMainArea();
+    };
+
+    // -------------------------------------------------------------
+    // 6. Bot管理パネル
+    // -------------------------------------------------------------
+    document.getElementById('btn-bot-panel').onclick = () => {
+      currentView = 'bot';
+      renderServerList();
+      renderSidebar();
+      renderMainArea();
+    };
+
+    document.getElementById('create-bot-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('bot-name-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      const newBot = {
+        id: 'bot_' + Date.now(),
+        displayName: name,
+        prefix: '!',
+        token: 'bot_token_' + Math.random().toString(36).substring(2)
+      };
+
+      bots.push(newBot);
+      saveData(DB_KEYS.BOTS, bots);
+      input.value = '';
+      renderBotsList();
+    });
+
+    function renderBotsList() {
+      const container = document.getElementById('bots-list');
+      container.innerHTML = '';
+
+      if (bots.length === 0) {
+        container.innerHTML = `<div class="text-xs text-gray-500 py-2">作成されたBotはありません。</div>`;
+        return;
+      }
+
+      bots.forEach(bot => {
+        const item = document.createElement('div');
+        item.className = 'p-3 bg-[#202225] rounded border border-gray-700 flex justify-between items-center';
+        item.innerHTML = `
+          <div>
+            <div class="font-bold text-white text-sm flex items-center gap-2">
+              ${bot.displayName} <span class="bg-indigo-600 text-[10px] px-1 rounded">BOT</span>
+            </div>
+            <div class="text-xs text-gray-400">プレフィックス: <code class="bg-black/40 px-1 rounded">${bot.prefix}</code></div>
+          </div>
+          <div class="text-xs text-gray-500 font-mono select-all bg-black/30 p-1 rounded">${bot.token}</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 7. モーダル操作 & サーバー・チャンネル作成
+    // -------------------------------------------------------------
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    document.getElementById('btn-add-server').onclick = () => openModal('server-modal');
+    document.getElementById('btn-close-server').onclick = () => closeModal('server-modal');
+    document.getElementById('btn-close-channel').onclick = () => closeModal('channel-modal');
+
+    // サーバー作成
+    document.getElementById('server-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('server-name-input').value.trim();
+      if (!name) return;
+
+      const srvId = 's_' + Date.now();
+      const newServer = { id: srvId, name, ownerId: currentUser.id };
+      servers.push(newServer);
+      saveData(DB_KEYS.SERVERS, servers);
+
+      // デフォルトチャンネル作成
+      const defaultChannel = { id: 'c_' + Date.now(), serverId: srvId, name: '一般', type: 'text' };
+      channels.push(defaultChannel);
+      saveData(DB_KEYS.CHANNELS, channels);
+
+      closeModal('server-modal');
+      document.getElementById('server-name-input').value = '';
+
+      currentView = 'server';
+      currentServerId = srvId;
+      currentChannelId = defaultChannel.id;
+      renderServerList();
+      renderSidebar();
+      renderMainArea();
+    });
+
+    // チャンネル作成
+    document.getElementById('channel-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('channel-name-input').value.trim();
+      const type = document.getElementById('channel-type-select').value;
+      if (!name || !currentServerId) return;
+
+      const newChannel = { id: 'c_' + Date.now(), serverId: currentServerId, name, type };
+      channels.push(newChannel);
+      saveData(DB_KEYS.CHANNELS, channels);
+
+      closeModal('channel-modal');
+      document.getElementById('channel-name-input').value = '';
+
+      currentChannelId = newChannel.id;
+      renderSidebar();
+      renderMainArea();
+    });
+
+    // DMビューボタン
+    document.getElementById('btn-dm-view').onclick = () => {
+      currentView = 'dm';
+      currentServerId = null;
+      currentChannelId = null;
+      renderServerList();
+      renderSidebar();
+      renderMainArea();
+    };
+
+    // ユーティリティ
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    }
+  </script>
+</body>
+</html>
