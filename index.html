@@ -134,8 +134,8 @@
       return null;
     };
 
-    const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
-    const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+    const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co/'; // あなたのSupabase URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';          // あなたのanon key
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       console.warn('警告: Supabaseの環境変数 (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) がセットされていません。RenderのEnvironmentタブで設定してください。');
