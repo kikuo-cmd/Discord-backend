@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Discord Clone with Supabase</title>
-  <!-- Tailwind CSS, Lucide Icons, Supabase JS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,11 +16,11 @@
 <body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
 
   <div id="app" class="flex h-screen w-screen">
-    <!-- 1. 認証画面 -->
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
       <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h1 class="text-2xl font-bold text-white mb-2 text-center" id="auth-title">アカウント作成</h1>
-        <form id="auth-form" class="space-y-4 mt-4">
+        
+        <form id="auth-form" class="space-y-4 mt-4" onsubmit="return false;">
           <div>
             <label class="block text-xs font-bold text-gray-300 uppercase mb-1">アカウントID (@id)</label>
             <input type="text" id="auth-username" required placeholder="user_123" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
@@ -36,29 +35,26 @@
           </div>
           <button type="submit" id="auth-submit-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition text-sm">登録して始める</button>
         </form>
+
         <div class="mt-4 text-center">
-          <button id="auth-toggle-btn" class="text-xs text-indigo-400 hover:underline">すでにアカウントをお持ちの方 (ログイン)</button>
+          <button id="auth-toggle-btn" type="button" class="text-xs text-indigo-400 hover:underline">すでにアカウントをお持ちの方 (ログイン)</button>
         </div>
       </div>
     </div>
 
-    <!-- 2. アプリメイン画面 -->
     <div id="main-screen" class="flex w-full h-full hidden">
-      <!-- サーバーリストバー -->
       <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0">
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
         </button>
       </div>
 
-      <!-- サイドバー -->
       <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center font-bold text-white shadow-sm">
           <span>ダイレクトメッセージ</span>
         </div>
         <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
         
-        <!-- ログインユーザー情報 -->
         <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
           <div class="flex items-center space-x-2 overflow-hidden p-1">
             <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
@@ -67,13 +63,12 @@
               <div id="my-username" class="text-xs text-gray-400 leading-tight truncate">@id</div>
             </div>
           </div>
-          <button id="btn-logout" class="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-gray-700/50">
+          <button id="btn-logout" type="button" class="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-gray-700/50">
             <i data-lucide="log-out" class="w-5 h-5"></i>
           </button>
         </div>
       </div>
 
-      <!-- メインエリア -->
       <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
           <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
@@ -83,12 +78,11 @@
         </div>
 
         <div class="flex-1 flex overflow-hidden">
-          <!-- フレンドビュー -->
           <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
             <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
               <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
               <p class="text-xs text-gray-400 mb-3">Supabase上のリアルなアカウントID (@id) を検索して追加します</p>
-              <form id="add-friend-form" class="flex gap-2">
+              <form id="add-friend-form" class="flex gap-2" onsubmit="return false;">
                 <input type="text" id="friend-id-input" placeholder="アカウントIDを入力..." class="flex-1 bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-indigo-500">
                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-medium">申請送信</button>
               </form>
@@ -97,11 +91,10 @@
             <div id="friends-list" class="space-y-1"></div>
           </div>
 
-          <!-- チャットビュー -->
           <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
             <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <div class="p-4 bg-[#36393f]">
-              <form id="chat-form" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5">
+              <form id="chat-form" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5" onsubmit="return false;">
                 <input type="text" id="chat-input" placeholder="メッセージを入力..." class="flex-1 bg-transparent text-white focus:outline-none text-sm">
                 <button type="submit" class="text-indigo-400 hover:text-indigo-300 ml-2">
                   <i data-lucide="send" class="w-5 h-5"></i>
@@ -116,35 +109,12 @@
 
   <script>
     // -------------------------------------------------------------
-    // 環境変数の動的読み込み
+    // Supabase 設定 (直接記述)
     // -------------------------------------------------------------
-    const getEnv = (key) => {
-      // 1. Vite / Next.js などのビルド環境変数からの取得
-      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-        return import.meta.env[key];
-      }
-      // 2. Node / Webpack 環境変数からの取得
-      if (typeof process !== 'undefined' && process.env && process.env[key]) {
-        return process.env[key];
-      }
-      // 3. グローバル window オブジェクト（直書きテスト等）からの取得
-      if (window[key]) {
-        return window[key];
-      }
-      return null;
-    };
+    const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
 
-    const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co'; // あなたのSupabase URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';          // あなたのanon key
-
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.warn('警告: Supabaseの環境変数 (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) がセットされていません。RenderのEnvironmentタブで設定してください。');
-    }
-
-    const supabaseClient = supabase.createClient(
-      SUPABASE_URL || 'https://placeholder.supabase.co', 
-      SUPABASE_ANON_KEY || 'placeholder'
-    );
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // -------------------------------------------------------------
     // ローカルストレージ管理：自分のログインセッションのみ保持
@@ -171,41 +141,62 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       const displayNameGroup = document.getElementById('display-name-group');
       const submitBtn = document.getElementById('auth-submit-btn');
 
-      toggleBtn.addEventListener('click', () => {
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         isSignUpMode = !isSignUpMode;
         displayNameGroup.style.display = isSignUpMode ? 'block' : 'none';
         submitBtn.textContent = isSignUpMode ? '登録して始める' : 'ログイン';
+        document.getElementById('auth-title').textContent = isSignUpMode ? 'アカウント作成' : 'おかえりなさい！';
       });
 
       authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // リロード防止
+
         const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value;
         const displayName = document.getElementById('auth-displayname').value.trim() || username;
 
-        if (isSignUpMode) {
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .insert({ user_id_name: username, display_name: displayName, password })
-            .select()
-            .single();
-
-          if (error) return alert('登録エラー: ' + error.message);
-          currentUser = data;
-        } else {
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('user_id_name', username)
-            .eq('password', password)
-            .single();
-
-          if (error || !data) return alert('アカウントIDまたはパスワードが正しくありません');
-          currentUser = data;
+        if (!username || !password) {
+          alert('アカウントIDとパスワードを入力してください。');
+          return;
         }
 
-        localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-        showMainApp();
+        try {
+          if (isSignUpMode) {
+            // 新規アカウント作成
+            const { data, error } = await supabaseClient
+              .from('profiles')
+              .insert({ user_id_name: username, display_name: displayName, password })
+              .select()
+              .single();
+
+            if (error) {
+              alert('登録エラー: ' + error.message);
+              return;
+            }
+            currentUser = data;
+          } else {
+            // ログイン認証
+            const { data, error } = await supabaseClient
+              .from('profiles')
+              .select('*')
+              .eq('user_id_name', username)
+              .eq('password', password)
+              .single();
+
+            if (error || !data) {
+              alert('アカウントIDまたはパスワードが正しくありません');
+              return;
+            }
+            currentUser = data;
+          }
+
+          // 自分のセッション情報のみLocalStorageへ保存
+          localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+          showMainApp();
+        } catch (err) {
+          alert('エラーが発生しました: ' + err.message);
+        }
       });
 
       document.getElementById('btn-logout').addEventListener('click', () => {
@@ -285,6 +276,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       const input = document.getElementById('friend-id-input');
       const targetUsername = input.value.trim();
 
+      if (!targetUsername) return;
       if (targetUsername === currentUser.user_id_name) return alert('自分自身は追加できません');
 
       const { data: targetUser, error } = await supabaseClient
@@ -341,7 +333,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
               <div class="text-xs text-gray-400">@${f.user_id_name}</div>
             </div>
           </div>
-          <button class="p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200 btn-msg">
+          <button class="p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200 btn-msg" type="button">
             <i data-lucide="message-square" class="w-4 h-4"></i>
           </button>
         `;
