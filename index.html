@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Discord Clone with Supabase</title>
+  <!-- Tailwind CSS, Lucide Icons, Supabase JS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,6 +17,7 @@
 <body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
 
   <div id="app" class="flex h-screen w-screen">
+    <!-- 1. 認証画面 -->
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
       <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h1 class="text-2xl font-bold text-white mb-2 text-center" id="auth-title">アカウント作成</h1>
@@ -42,19 +44,23 @@
       </div>
     </div>
 
+    <!-- 2. アプリメイン画面 -->
     <div id="main-screen" class="flex w-full h-full hidden">
+      <!-- サーバーリストバー -->
       <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0">
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
         </button>
       </div>
 
+      <!-- サイドバー -->
       <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center font-bold text-white shadow-sm">
           <span>ダイレクトメッセージ</span>
         </div>
         <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
         
+        <!-- ログインユーザー情報 -->
         <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
           <div class="flex items-center space-x-2 overflow-hidden p-1">
             <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
@@ -64,9 +70,11 @@
             </div>
           </div>
           <div class="flex items-center space-x-1">
+            <!-- ログアウトボタン -->
             <button id="btn-logout" type="button" title="ログアウト" class="p-1.5 text-gray-400 hover:text-yellow-400 rounded hover:bg-gray-700/50">
               <i data-lucide="log-out" class="w-4 h-4"></i>
             </button>
+            <!-- アカウント削除ボタン -->
             <button id="btn-delete-account" type="button" title="アカウント削除" class="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-700/50">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
@@ -74,6 +82,7 @@
         </div>
       </div>
 
+      <!-- メインエリア -->
       <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
           <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
@@ -83,6 +92,7 @@
         </div>
 
         <div class="flex-1 flex overflow-hidden">
+          <!-- フレンドビュー -->
           <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
             <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
               <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
@@ -96,6 +106,7 @@
             <div id="friends-list" class="space-y-1"></div>
           </div>
 
+          <!-- チャットビュー -->
           <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
             <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <div class="p-4 bg-[#36393f]">
@@ -117,7 +128,7 @@
     // Supabase 設定
     // -------------------------------------------------------------
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwMDI0MzIsImV4cCI6MjA3MzU3ODQzMn0.i7uE-wE8E42n-_fXkChH7k6-mRPlM7pGq2p2sWq0_aA';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -209,7 +220,7 @@
         location.reload();
       });
 
-      // ★ アカウント削除処理
+      // アカウント削除処理
       document.getElementById('btn-delete-account').addEventListener('click', async () => {
         const confirmDelete = confirm(`本当にアカウント (@${currentUser.user_id_name}) を削除しますか？\nこの操作は取り消せません。`);
         if (!confirmDelete) return;
