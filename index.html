@@ -63,9 +63,14 @@
               <div id="my-username" class="text-xs text-gray-400 leading-tight truncate">@id</div>
             </div>
           </div>
-          <button id="btn-logout" type="button" class="p-1.5 text-gray-400 hover:text-red-400 rounded hover:bg-gray-700/50">
-            <i data-lucide="log-out" class="w-5 h-5"></i>
-          </button>
+          <div class="flex items-center space-x-1">
+            <button id="btn-logout" type="button" title="ログアウト" class="p-1.5 text-gray-400 hover:text-yellow-400 rounded hover:bg-gray-700/50">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-delete-account" type="button" title="アカウント削除" class="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-700/50">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -109,15 +114,15 @@
 
   <script>
     // -------------------------------------------------------------
-    // Supabase 設定 (直接記述)
+    // Supabase 設定
     // -------------------------------------------------------------
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwMDI0MzIsImV4cCI6MjA3MzU3ODQzMn0.i7uE-wE8E42n-_fXkChH7k6-mRPlM7pGq2p2sWq0_aA';
 
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // -------------------------------------------------------------
-    // ローカルストレージ管理：自分のログインセッションのみ保持
+    // ローカルストレージ管理
     // -------------------------------------------------------------
     const SESSION_KEY = 'my_discord_session';
     let currentUser = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
@@ -133,7 +138,7 @@
     });
 
     // -------------------------------------------------------------
-    // 1. 認証 (新規登録・ログイン)
+    // 1. 認証 (新規登録・ログイン・アカウント削除)
     // -------------------------------------------------------------
     function initAuth() {
       const authForm = document.getElementById('auth-form');
@@ -150,7 +155,7 @@
       });
 
       authForm.addEventListener('submit', async (e) => {
-        e.preventDefault(); // リロード防止
+        e.preventDefault();
 
         const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value;
@@ -191,7 +196,6 @@
             currentUser = data;
           }
 
-          // 自分のセッション情報のみLocalStorageへ保存
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
           showMainApp();
         } catch (err) {
@@ -199,9 +203,47 @@
         }
       });
 
+      // ログアウト処理
       document.getElementById('btn-logout').addEventListener('click', () => {
         localStorage.removeItem(SESSION_KEY);
         location.reload();
+      });
+
+      // ★ アカウント削除処理
+      document.getElementById('btn-delete-account').addEventListener('click', async () => {
+        const confirmDelete = confirm(`本当にアカウント (@${currentUser.user_id_name}) を削除しますか？\nこの操作は取り消せません。`);
+        if (!confirmDelete) return;
+
+        try {
+          // 1. メッセージデータの削除
+          await supabaseClient
+            .from('messages')
+            .delete()
+            .or(`sender_id.eq.${currentUser.id},target_id.eq.${currentUser.id}`);
+
+          // 2. フレンド関係の削除
+          await supabaseClient
+            .from('friendships')
+            .delete()
+            .or(`from_id.eq.${currentUser.id},to_id.eq.${currentUser.id}`);
+
+          // 3. プロフィール本体の削除
+          const { error } = await supabaseClient
+            .from('profiles')
+            .delete()
+            .eq('id', currentUser.id);
+
+          if (error) {
+            alert('アカウント削除に失敗しました: ' + error.message);
+            return;
+          }
+
+          alert('アカウントを完全に削除しました。');
+          localStorage.removeItem(SESSION_KEY);
+          location.reload();
+        } catch (err) {
+          alert('削除中にエラーが発生しました: ' + err.message);
+        }
       });
     }
 
@@ -236,7 +278,7 @@
 
       if (error) return [];
 
-      return data.map(f => f.from_id === currentUser.id ? f.to_user : f.from_user);
+      return data.map(f => f.from_id === currentUser.id ? f.to_user : f.from_user).filter(Boolean);
     }
 
     async function renderSidebar() {
@@ -354,6 +396,7 @@
         .order('created_at', { ascending: true });
 
       (messages || []).forEach(msg => {
+        if (!msg.sender) return;
         const msgEl = document.createElement('div');
         msgEl.className = 'flex items-start space-x-3 p-1 rounded';
         msgEl.innerHTML = `
