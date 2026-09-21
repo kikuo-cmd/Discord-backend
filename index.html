@@ -116,18 +116,42 @@
 
   <script>
     // -------------------------------------------------------------
-    // Supabase 設定 (ご自身のキーに置き換えてください)
+    // 環境変数の動的読み込み
     // -------------------------------------------------------------
-    const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const getEnv = (key) => {
+      // 1. Vite / Next.js などのビルド環境変数からの取得
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+        return import.meta.env[key];
+      }
+      // 2. Node / Webpack 環境変数からの取得
+      if (typeof process !== 'undefined' && process.env && process.env[key]) {
+        return process.env[key];
+      }
+      // 3. グローバル window オブジェクト（直書きテスト等）からの取得
+      if (window[key]) {
+        return window[key];
+      }
+      return null;
+    };
+
+    const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.warn('警告: Supabaseの環境変数 (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) がセットされていません。RenderのEnvironmentタブで設定してください。');
+    }
+
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL || 'https://placeholder.supabase.co', 
+      SUPABASE_ANON_KEY || 'placeholder'
+    );
 
     // -------------------------------------------------------------
-    // ローカルストレージ管理：ログイン中の自分のプロファイルのみ保存
+    // ローカルストレージ管理：自分のログインセッションのみ保持
     // -------------------------------------------------------------
     const SESSION_KEY = 'my_discord_session';
     let currentUser = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
-    let currentTargetFriendId = null; // 現在DMを開いている相手のID
+    let currentTargetFriendId = null;
     let isSignUpMode = true;
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -139,7 +163,7 @@
     });
 
     // -------------------------------------------------------------
-    // 1. 認証 (新規登録・ログイン) -> 認証状態のみLocalStorage保持
+    // 1. 認証 (新規登録・ログイン)
     // -------------------------------------------------------------
     function initAuth() {
       const authForm = document.getElementById('auth-form');
@@ -160,7 +184,6 @@
         const displayName = document.getElementById('auth-displayname').value.trim() || username;
 
         if (isSignUpMode) {
-          // Supabaseへ新規アカウント追加
           const { data, error } = await supabaseClient
             .from('profiles')
             .insert({ user_id_name: username, display_name: displayName, password })
@@ -170,7 +193,6 @@
           if (error) return alert('登録エラー: ' + error.message);
           currentUser = data;
         } else {
-          // Supabaseからユーザー検証
           const { data, error } = await supabaseClient
             .from('profiles')
             .select('*')
@@ -182,7 +204,6 @@
           currentUser = data;
         }
 
-        // ★自分のログイン状態のみローカルストレージに保持
         localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
         showMainApp();
       });
@@ -194,7 +215,7 @@
     }
 
     // -------------------------------------------------------------
-    // 2. メインアプリ起動 & Supabaseから全データ取得
+    // 2. メインアプリ起動
     // -------------------------------------------------------------
     async function showMainApp() {
       document.getElementById('auth-screen').classList.add('hidden');
@@ -213,7 +234,6 @@
     // 3. Supabaseからフレンドデータの読み込み
     // -------------------------------------------------------------
     async function loadFriendsFromSupabase() {
-      // 相互フレンド関係を取得
       const { data, error } = await supabaseClient
         .from('friendships')
         .select(`
@@ -232,14 +252,12 @@
       const content = document.getElementById('sidebar-content');
       content.innerHTML = '';
 
-      // トップ: フレンド一覧ボタン
       const friendsBtn = document.createElement('div');
       friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === null ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
       friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
       friendsBtn.onclick = () => { currentTargetFriendId = null; renderSidebar(); renderMainArea(); };
       content.appendChild(friendsBtn);
 
-      // Supabaseのフレンド一覧
       const friends = await loadFriendsFromSupabase();
       if (friends.length > 0) {
         const label = document.createElement('div');
@@ -261,7 +279,7 @@
       lucide.createIcons();
     }
 
-    // フレンド申請処理 (Supabaseへ読み書き)
+    // フレンド申請処理
     document.getElementById('add-friend-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('friend-id-input');
@@ -269,7 +287,6 @@
 
       if (targetUsername === currentUser.user_id_name) return alert('自分自身は追加できません');
 
-      // 1. Supabaseから相手を検索
       const { data: targetUser, error } = await supabaseClient
         .from('profiles')
         .select('*')
@@ -278,7 +295,6 @@
 
       if (error || !targetUser) return alert('指定されたアカウントIDは見つかりません');
 
-      // 2. フレンド追加
       await supabaseClient.from('friendships').insert({ from_id: currentUser.id, to_id: targetUser.id });
       alert(`${targetUser.display_name} さんとフレンドになりました！`);
       input.value = '';
@@ -287,7 +303,7 @@
     });
 
     // -------------------------------------------------------------
-    // 4. Supabase メッセージ処理 & Realtimeリアルタイム同期
+    // 4. メッセージ処理 & リアルタイム同期
     // -------------------------------------------------------------
     async function renderMainArea() {
       const friendsView = document.getElementById('friends-view');
@@ -363,7 +379,6 @@
       container.scrollTop = container.scrollHeight;
     }
 
-    // チャット送信
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
@@ -380,7 +395,6 @@
       loadMessagesFromSupabase();
     });
 
-    // Supabase Realtime (リアルタイム受信)
     function setupRealtime() {
       supabaseClient
         .channel('public:messages')
