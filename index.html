@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discord Clone with Supabase</title>
-  <!-- Tailwind CSS, Lucide Icons, Supabase JS -->
+  <title>Discord Clone with Supabase, WebRTC & Bot</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,8 +15,7 @@
 </head>
 <body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
 
-  <div id="app" class="flex h-screen w-screen">
-    <!-- 1. 認証画面 -->
+  <div id="app" class="flex h-screen w-screen relative">
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
       <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h1 class="text-2xl font-bold text-white mb-2 text-center" id="auth-title">アカウント作成</h1>
@@ -44,23 +42,29 @@
       </div>
     </div>
 
-    <!-- 2. アプリメイン画面 -->
     <div id="main-screen" class="flex w-full h-full hidden">
-      <!-- サーバーリストバー -->
-      <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0">
+      <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0 border-r border-[#202225]">
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
         </button>
+        <div class="w-8 h-[2px] bg-[#36393f] rounded"></div>
+        
+        <div id="server-list" class="flex flex-col space-y-2 w-full items-center"></div>
+
+        <button id="btn-add-server" title="サーバーを作成" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-green-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-green-500 hover:text-white">
+          <i data-lucide="plus" class="w-6 h-6"></i>
+        </button>
       </div>
 
-      <!-- サイドバー -->
       <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
-        <div class="h-12 border-b border-[#202225] px-4 flex items-center font-bold text-white shadow-sm">
-          <span>ダイレクトメッセージ</span>
+        <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between font-bold text-white shadow-sm">
+          <span id="sidebar-header-title">ダイレクトメッセージ</span>
+          <button id="btn-add-channel" title="チャンネル作成" class="text-gray-400 hover:text-white hidden">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+          </button>
         </div>
         <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
         
-        <!-- ログインユーザー情報 -->
         <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
           <div class="flex items-center space-x-2 overflow-hidden p-1">
             <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
@@ -70,11 +74,9 @@
             </div>
           </div>
           <div class="flex items-center space-x-1">
-            <!-- ログアウトボタン -->
             <button id="btn-logout" type="button" title="ログアウト" class="p-1.5 text-gray-400 hover:text-yellow-400 rounded hover:bg-gray-700/50">
               <i data-lucide="log-out" class="w-4 h-4"></i>
             </button>
-            <!-- アカウント削除ボタン -->
             <button id="btn-delete-account" type="button" title="アカウント削除" class="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-700/50">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
@@ -82,17 +84,24 @@
         </div>
       </div>
 
-      <!-- メインエリア -->
       <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
           <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
-            <i data-lucide="users" class="w-5 h-5 text-gray-400"></i>
+            <i data-lucide="users" class="w-5 h-5 text-gray-400" id="header-icon"></i>
             <span id="header-title">フレンド一覧</span>
+          </div>
+
+          <div id="call-buttons" class="flex items-center space-x-2 hidden">
+            <button id="btn-start-audio-call" title="音声通話を開始" class="p-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-full transition">
+              <i data-lucide="phone" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-start-video-call" title="ビデオ通話を開始" class="p-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-full transition">
+              <i data-lucide="video" class="w-5 h-5"></i>
+            </button>
           </div>
         </div>
 
         <div class="flex-1 flex overflow-hidden">
-          <!-- フレンドビュー -->
           <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
             <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
               <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
@@ -106,18 +115,60 @@
             <div id="friends-list" class="space-y-1"></div>
           </div>
 
-          <!-- チャットビュー -->
           <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
             <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <div class="p-4 bg-[#36393f]">
               <form id="chat-form" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5" onsubmit="return false;">
-                <input type="text" id="chat-input" placeholder="メッセージを入力..." class="flex-1 bg-transparent text-white focus:outline-none text-sm">
+                <input type="text" id="chat-input" placeholder="メッセージを入力... (!ping や !dice でボットが反応します)" class="flex-1 bg-transparent text-white focus:outline-none text-sm">
                 <button type="submit" class="text-indigo-400 hover:text-indigo-300 ml-2">
                   <i data-lucide="send" class="w-5 h-5"></i>
                 </button>
               </form>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="add-server-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 hidden">
+      <div class="bg-[#36393f] p-6 rounded-lg shadow-2xl w-96 border border-gray-700">
+        <h2 class="text-xl font-bold text-white text-center mb-4">サーバーの作成</h2>
+        <input type="text" id="server-name-input" placeholder="サーバー名" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm mb-4">
+        <div class="flex justify-end space-x-2">
+          <button id="btn-cancel-server" class="px-4 py-2 text-sm text-gray-300 hover:underline">キャンセル</button>
+          <button id="btn-create-server" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium">作成</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="call-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+      <div class="bg-[#2f3136] p-6 rounded-2xl shadow-2xl w-[600px] border border-gray-700 flex flex-col items-center">
+        <h2 id="call-status-title" class="text-xl font-bold text-white mb-4">通話中...</h2>
+
+        <div id="video-container" class="relative w-full h-80 bg-black rounded-lg overflow-hidden mb-6 flex items-center justify-center">
+          <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+          <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-32 h-24 bg-gray-800 rounded-lg border-2 border-indigo-500 object-cover"></video>
+        </div>
+
+        <div id="incoming-call-controls" class="flex gap-4 hidden">
+          <button id="btn-accept-call" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-full font-bold flex items-center space-x-2">
+            <i data-lucide="phone-call" class="w-5 h-5"></i><span>応答</span>
+          </button>
+          <button id="btn-reject-call" class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold flex items-center space-x-2">
+            <i data-lucide="phone-off" class="w-5 h-5"></i><span>拒否</span>
+          </button>
+        </div>
+
+        <div id="active-call-controls" class="flex gap-4">
+          <button id="btn-toggle-mic" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition">
+            <i data-lucide="mic" class="w-6 h-6"></i>
+          </button>
+          <button id="btn-toggle-cam" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition">
+            <i data-lucide="video" class="w-6 h-6"></i>
+          </button>
+          <button id="btn-end-call" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition">
+            <i data-lucide="phone-off" class="w-6 h-6"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -133,133 +184,85 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // -------------------------------------------------------------
-    // ローカルストレージ管理
+    // グローバル状態
     // -------------------------------------------------------------
     const SESSION_KEY = 'my_discord_session';
     let currentUser = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
+    
+    let currentMode = 'dm'; // 'dm' または 'server'
     let currentTargetFriendId = null;
-    let isSignUpMode = true;
+    let currentServerId = null;
+    let currentChannelId = null;
+
+    let servers = JSON.parse(localStorage.getItem('my_discord_servers')) || [];
+    let channels = JSON.parse(localStorage.getItem('my_discord_channels')) || [];
+
+    // WebRTC 変数
+    let peerConnection = null;
+    let localStream = null;
+    let callChannel = null;
+    let incomingSignalData = null;
+
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       initAuth();
-      if (currentUser) {
-        showMainApp();
-      }
+      if (currentUser) showMainApp();
     });
 
     // -------------------------------------------------------------
-    // 1. 認証 (新規登録・ログイン・アカウント削除)
+    // 1. 認証機能
     // -------------------------------------------------------------
     function initAuth() {
       const authForm = document.getElementById('auth-form');
       const toggleBtn = document.getElementById('auth-toggle-btn');
-      const displayNameGroup = document.getElementById('display-name-group');
-      const submitBtn = document.getElementById('auth-submit-btn');
+      let isSignUpMode = true;
 
       toggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
         isSignUpMode = !isSignUpMode;
-        displayNameGroup.style.display = isSignUpMode ? 'block' : 'none';
-        submitBtn.textContent = isSignUpMode ? '登録して始める' : 'ログイン';
+        document.getElementById('display-name-group').style.display = isSignUpMode ? 'block' : 'none';
+        document.getElementById('auth-submit-btn').textContent = isSignUpMode ? '登録して始める' : 'ログイン';
         document.getElementById('auth-title').textContent = isSignUpMode ? 'アカウント作成' : 'おかえりなさい！';
       });
 
       authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
         const username = document.getElementById('auth-username').value.trim();
         const password = document.getElementById('auth-password').value;
         const displayName = document.getElementById('auth-displayname').value.trim() || username;
 
-        if (!username || !password) {
-          alert('アカウントIDとパスワードを入力してください。');
-          return;
-        }
+        if (!username || !password) return alert('入力してください');
 
         try {
           if (isSignUpMode) {
-            // 新規アカウント作成
-            const { data, error } = await supabaseClient
-              .from('profiles')
-              .insert({ user_id_name: username, display_name: displayName, password })
-              .select()
-              .single();
-
-            if (error) {
-              alert('登録エラー: ' + error.message);
-              return;
-            }
+            const { data, error } = await supabaseClient.from('profiles').insert({ user_id_name: username, display_name: displayName, password }).select().single();
+            if (error) return alert('登録エラー: ' + error.message);
             currentUser = data;
           } else {
-            // ログイン認証
-            const { data, error } = await supabaseClient
-              .from('profiles')
-              .select('*')
-              .eq('user_id_name', username)
-              .eq('password', password)
-              .single();
-
-            if (error || !data) {
-              alert('アカウントIDまたはパスワードが正しくありません');
-              return;
-            }
+            const { data, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', username).eq('password', password).single();
+            if (error || !data) return alert('アカウントIDまたはパスワードが正しくありません');
             currentUser = data;
           }
 
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
           showMainApp();
-        } catch (err) {
-          alert('エラーが発生しました: ' + err.message);
-        }
+        } catch (err) { alert(err.message); }
       });
 
-      // ログアウト処理
-      document.getElementById('btn-logout').addEventListener('click', () => {
+      document.getElementById('btn-logout').onclick = () => { localStorage.removeItem(SESSION_KEY); location.reload(); };
+      document.getElementById('btn-delete-account').onclick = async () => {
+        if (!confirm('アカウントを削除しますか？')) return;
+        await supabaseClient.from('messages').delete().or(`sender_id.eq.${currentUser.id},target_id.eq.${currentUser.id}`);
+        await supabaseClient.from('profiles').delete().eq('id', currentUser.id);
         localStorage.removeItem(SESSION_KEY);
         location.reload();
-      });
-
-      // アカウント削除処理
-      document.getElementById('btn-delete-account').addEventListener('click', async () => {
-        const confirmDelete = confirm(`本当にアカウント (@${currentUser.user_id_name}) を削除しますか？\nこの操作は取り消せません。`);
-        if (!confirmDelete) return;
-
-        try {
-          // 1. メッセージデータの削除
-          await supabaseClient
-            .from('messages')
-            .delete()
-            .or(`sender_id.eq.${currentUser.id},target_id.eq.${currentUser.id}`);
-
-          // 2. フレンド関係の削除
-          await supabaseClient
-            .from('friendships')
-            .delete()
-            .or(`from_id.eq.${currentUser.id},to_id.eq.${currentUser.id}`);
-
-          // 3. プロフィール本体の削除
-          const { error } = await supabaseClient
-            .from('profiles')
-            .delete()
-            .eq('id', currentUser.id);
-
-          if (error) {
-            alert('アカウント削除に失敗しました: ' + error.message);
-            return;
-          }
-
-          alert('アカウントを完全に削除しました。');
-          localStorage.removeItem(SESSION_KEY);
-          location.reload();
-        } catch (err) {
-          alert('削除中にエラーが発生しました: ' + err.message);
-        }
-      });
+      };
     }
 
     // -------------------------------------------------------------
-    // 2. メインアプリ起動
+    // 2. メイン画面の構築
     // -------------------------------------------------------------
     async function showMainApp() {
       document.getElementById('auth-screen').classList.add('hidden');
@@ -269,46 +272,94 @@
       document.getElementById('my-username').textContent = '@' + currentUser.user_id_name;
       document.getElementById('my-avatar').textContent = currentUser.display_name.charAt(0).toUpperCase();
 
-      await renderSidebar();
+      initServerEvents();
+      renderServerList();
+      renderSidebar();
       renderMainArea();
       setupRealtime();
     }
 
     // -------------------------------------------------------------
-    // 3. Supabaseからフレンドデータの読み込み
+    // 3. サーバー機能
     // -------------------------------------------------------------
-    async function loadFriendsFromSupabase() {
-      const { data, error } = await supabaseClient
-        .from('friendships')
-        .select(`
-          from_id, to_id,
-          from_user:from_id(*),
-          to_user:to_id(*)
-        `)
-        .or(`from_id.eq.${currentUser.id},to_id.eq.${currentUser.id}`);
+    function initServerEvents() {
+      document.getElementById('btn-dm-view').onclick = () => {
+        currentMode = 'dm';
+        currentServerId = null;
+        renderServerList();
+        renderSidebar();
+        renderMainArea();
+      };
 
-      if (error) return [];
+      document.getElementById('btn-add-server').onclick = () => {
+        document.getElementById('add-server-modal').classList.remove('hidden');
+      };
+      document.getElementById('btn-cancel-server').onclick = () => {
+        document.getElementById('add-server-modal').classList.add('hidden');
+      };
+      document.getElementById('btn-create-server').onclick = () => {
+        const name = document.getElementById('server-name-input').value.trim();
+        if (!name) return;
 
-      return data.map(f => f.from_id === currentUser.id ? f.to_user : f.from_user).filter(Boolean);
+        const newServer = { id: 'srv_' + Date.now(), name: name, icon: name.charAt(0) };
+        servers.push(newServer);
+        localStorage.setItem('my_discord_servers', JSON.stringify(servers));
+
+        // デフォルトの一般チャンネルを作成
+        const defaultChannel = { id: 'chn_' + Date.now(), serverId: newServer.id, name: '一般' };
+        channels.push(defaultChannel);
+        localStorage.setItem('my_discord_channels', JSON.stringify(channels));
+
+        document.getElementById('add-server-modal').classList.add('hidden');
+        document.getElementById('server-name-input').value = '';
+
+        currentMode = 'server';
+        currentServerId = newServer.id;
+        currentChannelId = defaultChannel.id;
+        renderServerList();
+        renderSidebar();
+        renderMainArea();
+      };
     }
 
+    function renderServerList() {
+      const container = document.getElementById('server-list');
+      container.innerHTML = '';
+
+      servers.forEach(srv => {
+        const btn = document.createElement('button');
+        btn.className = `w-12 h-12 rounded-3xl hover:rounded-2xl transition-all duration-200 flex items-center justify-center font-bold text-white text-lg ${currentServerId === srv.id ? 'bg-indigo-600 rounded-2xl' : 'bg-[#36393f] hover:bg-indigo-500'}`;
+        btn.textContent = srv.icon;
+        btn.onclick = () => {
+          currentMode = 'server';
+          currentServerId = srv.id;
+          const srvChannels = channels.filter(c => c.serverId === srv.id);
+          currentChannelId = srvChannels.length > 0 ? srvChannels[0].id : null;
+          renderServerList();
+          renderSidebar();
+          renderMainArea();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 4. サイドバー & メイン表示
+    // -------------------------------------------------------------
     async function renderSidebar() {
       const content = document.getElementById('sidebar-content');
+      const headerTitle = document.getElementById('sidebar-header-title');
       content.innerHTML = '';
 
-      const friendsBtn = document.createElement('div');
-      friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === null ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
-      friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
-      friendsBtn.onclick = () => { currentTargetFriendId = null; renderSidebar(); renderMainArea(); };
-      content.appendChild(friendsBtn);
+      if (currentMode === 'dm') {
+        headerTitle.textContent = 'ダイレクトメッセージ';
+        const friendsBtn = document.createElement('div');
+        friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === null ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
+        friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
+        friendsBtn.onclick = () => { currentTargetFriendId = null; renderSidebar(); renderMainArea(); };
+        content.appendChild(friendsBtn);
 
-      const friends = await loadFriendsFromSupabase();
-      if (friends.length > 0) {
-        const label = document.createElement('div');
-        label.className = 'text-xs font-bold text-gray-400 uppercase px-2 pt-4 pb-1';
-        label.textContent = 'ダイレクトメッセージ';
-        content.appendChild(label);
-
+        const friends = await loadFriends();
         friends.forEach(friend => {
           const item = document.createElement('div');
           item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === friend.id ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
@@ -319,61 +370,59 @@
           item.onclick = () => { currentTargetFriendId = friend.id; renderSidebar(); renderMainArea(); };
           content.appendChild(item);
         });
+      } else {
+        const activeServer = servers.find(s => s.id === currentServerId);
+        headerTitle.textContent = activeServer ? activeServer.name : 'サーバー';
+
+        const srvChannels = channels.filter(c => c.serverId === currentServerId);
+        srvChannels.forEach(chn => {
+          const item = document.createElement('div');
+          item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentChannelId === chn.id ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
+          item.innerHTML = `<i data-lucide="hash" class="w-4 h-4 text-gray-400"></i><span class="text-sm font-medium">${chn.name}</span>`;
+          item.onclick = () => { currentChannelId = chn.id; renderSidebar(); renderMainArea(); };
+          content.appendChild(item);
+        });
       }
       lucide.createIcons();
     }
 
-    // フレンド申請処理
-    document.getElementById('add-friend-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('friend-id-input');
-      const targetUsername = input.value.trim();
+    async function loadFriends() {
+      const { data } = await supabaseClient.from('friendships').select(`from_id, to_id, from_user:from_id(*), to_user:to_id(*)`).or(`from_id.eq.${currentUser.id},to_id.eq.${currentUser.id}`);
+      return (data || []).map(f => f.from_id === currentUser.id ? f.to_user : f.from_user).filter(Boolean);
+    }
 
-      if (!targetUsername) return;
-      if (targetUsername === currentUser.user_id_name) return alert('自分自身は追加できません');
-
-      const { data: targetUser, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('user_id_name', targetUsername)
-        .single();
-
-      if (error || !targetUser) return alert('指定されたアカウントIDは見つかりません');
-
-      await supabaseClient.from('friendships').insert({ from_id: currentUser.id, to_id: targetUser.id });
-      alert(`${targetUser.display_name} さんとフレンドになりました！`);
-      input.value = '';
-      renderSidebar();
-      renderMainArea();
-    });
-
-    // -------------------------------------------------------------
-    // 4. メッセージ処理 & リアルタイム同期
-    // -------------------------------------------------------------
     async function renderMainArea() {
       const friendsView = document.getElementById('friends-view');
       const chatView = document.getElementById('chat-view');
+      const callButtons = document.getElementById('call-buttons');
 
-      if (currentTargetFriendId === null) {
+      if (currentMode === 'dm' && currentTargetFriendId === null) {
         friendsView.classList.remove('hidden');
         chatView.classList.add('hidden');
+        callButtons.classList.add('hidden');
+        document.getElementById('header-title').textContent = 'フレンド一覧';
         renderFriendsList();
       } else {
         friendsView.classList.add('hidden');
         chatView.classList.remove('hidden');
-        await loadMessagesFromSupabase();
+
+        if (currentMode === 'dm') {
+          callButtons.classList.remove('hidden');
+          const { data: friend } = await supabaseClient.from('profiles').select('*').eq('id', currentTargetFriendId).single();
+          document.getElementById('header-title').textContent = friend ? friend.display_name : 'チャット';
+        } else {
+          callButtons.classList.add('hidden');
+          const chn = channels.find(c => c.id === currentChannelId);
+          document.getElementById('header-title').textContent = chn ? `# ${chn.name}` : 'テキストチャンネル';
+        }
+        await loadMessages();
       }
     }
 
     async function renderFriendsList() {
       const container = document.getElementById('friends-list');
       container.innerHTML = '';
-      const friends = await loadFriendsFromSupabase();
-
-      if (friends.length === 0) {
-        container.innerHTML = `<div class="text-xs text-gray-500 py-4">まだフレンドがいません</div>`;
-        return;
-      }
+      const friends = await loadFriends();
 
       friends.forEach(f => {
         const item = document.createElement('div');
@@ -386,9 +435,7 @@
               <div class="text-xs text-gray-400">@${f.user_id_name}</div>
             </div>
           </div>
-          <button class="p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200 btn-msg" type="button">
-            <i data-lucide="message-square" class="w-4 h-4"></i>
-          </button>
+          <button class="p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200 btn-msg"><i data-lucide="message-square" class="w-4 h-4"></i></button>
         `;
         item.querySelector('.btn-msg').onclick = () => { currentTargetFriendId = f.id; renderSidebar(); renderMainArea(); };
         container.appendChild(item);
@@ -396,26 +443,33 @@
       lucide.createIcons();
     }
 
-    async function loadMessagesFromSupabase() {
+    // メッセージ取得・表示
+    async function loadMessages() {
       const container = document.getElementById('message-container');
       container.innerHTML = '';
 
-      const { data: messages } = await supabaseClient
-        .from('messages')
-        .select('*, sender:sender_id(*)')
-        .or(`and(sender_id.eq.${currentUser.id},target_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},target_id.eq.${currentUser.id})`)
-        .order('created_at', { ascending: true });
+      let messages = [];
+      if (currentMode === 'dm') {
+        const { data } = await supabaseClient.from('messages').select('*, sender:sender_id(*)').or(`and(sender_id.eq.${currentUser.id},target_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},target_id.eq.${currentUser.id})`).order('created_at', { ascending: true });
+        messages = data || [];
+      } else {
+        // サーバーメッセージ (ローカル保持)
+        messages = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
+      }
 
-      (messages || []).forEach(msg => {
-        if (!msg.sender) return;
+      messages.forEach(msg => {
+        const senderName = msg.sender ? msg.sender.display_name : (msg.sender_name || 'ユーザー');
+        const isBot = msg.is_bot ? '<span class="bg-indigo-600 text-[10px] text-white font-bold px-1 rounded ml-1">BOT</span>' : '';
+
         const msgEl = document.createElement('div');
         msgEl.className = 'flex items-start space-x-3 p-1 rounded';
         msgEl.innerHTML = `
-          <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white flex-shrink-0">${msg.sender.display_name.charAt(0)}</div>
+          <div class="w-8 h-8 rounded-full ${msg.is_bot ? 'bg-green-600' : 'bg-indigo-500'} flex items-center justify-center font-bold text-white flex-shrink-0">${senderName.charAt(0)}</div>
           <div>
-            <div class="flex items-center space-x-2">
-              <span class="font-bold text-sm text-white">${msg.sender.display_name}</span>
-              <span class="text-[10px] text-gray-400">${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <div class="flex items-center space-x-1">
+              <span class="font-bold text-sm text-white">${senderName}</span>
+              ${isBot}
+              <span class="text-[10px] text-gray-400 ml-2">${new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
             <div class="text-sm text-gray-200">${msg.content}</div>
           </div>
@@ -425,31 +479,135 @@
       container.scrollTop = container.scrollHeight;
     }
 
+    // メッセージ送信 & ボット自動応答
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
       const text = input.value.trim();
-      if (!text || !currentTargetFriendId) return;
+      if (!text) return;
 
-      await supabaseClient.from('messages').insert({
-        sender_id: currentUser.id,
-        target_id: currentTargetFriendId,
-        content: text
-      });
+      if (currentMode === 'dm') {
+        if (!currentTargetFriendId) return;
+        await supabaseClient.from('messages').insert({ sender_id: currentUser.id, target_id: currentTargetFriendId, content: text });
+      } else {
+        if (!currentChannelId) return;
+        const srvMsgs = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
+        srvMsgs.push({ sender_name: currentUser.display_name, content: text, created_at: new Date() });
+
+        // ★ 自動応答ボットの仕組み (!ping / !dice)
+        if (text === '!ping') {
+          srvMsgs.push({ sender_name: 'Clyde Bot', content: 'pong! 🏓', is_bot: true, created_at: new Date() });
+        } else if (text === '!dice') {
+          const num = Math.floor(Math.random() * 6) + 1;
+          srvMsgs.push({ sender_name: 'Dice Bot', content: `🎲 サイコロの目は **${num}** です！`, is_bot: true, created_at: new Date() });
+        }
+
+        localStorage.setItem(`srv_msg_${currentChannelId}`, JSON.stringify(srvMsgs));
+      }
 
       input.value = '';
-      loadMessagesFromSupabase();
+      loadMessages();
     });
 
+    // -------------------------------------------------------------
+    // 5. WebRTC & Realtime 通話
+    // -------------------------------------------------------------
     function setupRealtime() {
-      supabaseClient
-        .channel('public:messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-          if (currentTargetFriendId && (payload.new.sender_id === currentTargetFriendId || payload.new.target_id === currentTargetFriendId)) {
-            loadMessagesFromSupabase();
-          }
-        })
-        .subscribe();
+      supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        if (currentMode === 'dm') loadMessages();
+      }).subscribe();
+
+      callChannel = supabaseClient.channel('call_signaling');
+      callChannel.on('broadcast', { event: 'call-signal' }, async ({ payload }) => {
+        if (payload.targetId !== currentUser.id) return;
+
+        if (payload.type === 'offer') {
+          incomingSignalData = payload;
+          openCallModal(`${payload.senderName} から着信中...`, payload.isVideo);
+          document.getElementById('active-call-controls').classList.add('hidden');
+          document.getElementById('incoming-call-controls').classList.remove('hidden');
+        } else if (payload.type === 'answer' && peerConnection) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          document.getElementById('call-status-title').textContent = '通話中';
+        } else if (payload.type === 'candidate' && peerConnection) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        } else if (payload.type === 'hangup' || payload.type === 'reject') {
+          closeCall();
+        }
+      }).subscribe();
+
+      document.getElementById('btn-start-audio-call').onclick = () => startCall(false);
+      document.getElementById('btn-start-video-call').onclick = () => startCall(true);
+      document.getElementById('btn-accept-call').onclick = acceptCall;
+      document.getElementById('btn-reject-call').onclick = () => { callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'reject', senderId: currentUser.id, targetId: incomingSignalData.senderId } }); closeCall(); };
+      document.getElementById('btn-end-call').onclick = () => {
+        const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
+        if (tid) callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'hangup', senderId: currentUser.id, targetId: tid } });
+        closeCall();
+      };
+    }
+
+    async function startCall(isVideo) {
+      if (!currentTargetFriendId) return;
+      openCallModal('呼び出し中...', isVideo);
+      document.getElementById('active-call-controls').classList.remove('hidden');
+      document.getElementById('incoming-call-controls').classList.add('hidden');
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
+        document.getElementById('local-video').srcObject = localStream;
+        peerConnection = createPeerConnection();
+        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'offer', senderId: currentUser.id, targetId: currentTargetFriendId, senderName: currentUser.display_name, sdp: offer, isVideo: isVideo } });
+      } catch (err) { alert('デバイスが開けません'); closeCall(); }
+    }
+
+    async function acceptCall() {
+      if (!incomingSignalData) return;
+      document.getElementById('incoming-call-controls').classList.add('hidden');
+      document.getElementById('active-call-controls').classList.remove('hidden');
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingSignalData.isVideo });
+        document.getElementById('local-video').srcObject = localStream;
+        peerConnection = createPeerConnection();
+        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingSignalData.sdp));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'answer', senderId: currentUser.id, targetId: incomingSignalData.senderId, sdp: answer } });
+        document.getElementById('call-status-title').textContent = '通話中';
+      } catch (err) { closeCall(); }
+    }
+
+    function createPeerConnection() {
+      const pc = new RTCPeerConnection(rtcConfig);
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
+          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'candidate', senderId: currentUser.id, targetId: tid, candidate: e.candidate } });
+        }
+      };
+      pc.ontrack = (e) => document.getElementById('remote-video').srcObject = e.streams[0];
+      return pc;
+    }
+
+    function openCallModal(title, isVideo) {
+      document.getElementById('call-status-title').textContent = title;
+      document.getElementById('call-modal').classList.remove('hidden');
+      document.getElementById('video-container').style.display = isVideo ? 'flex' : 'none';
+    }
+
+    function closeCall() {
+      if (peerConnection) { peerConnection.close(); peerConnection = null; }
+      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+      document.getElementById('call-modal').classList.add('hidden');
     }
   </script>
 </body>
