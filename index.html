@@ -7,10 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <!-- iPad用デバッグコンソール (eruda) -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
 </head>
 <body class="bg-gray-800 text-white font-sans antialiased h-screen flex flex-col">
 
@@ -144,7 +140,7 @@
   <script>
     // --- Supabase設定 ---
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI'; // 必要に応じてご自身のAnon Keyに変更してください
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- グローバル状態管理 ---
@@ -291,7 +287,6 @@
       callButtons.classList.remove('hidden');
       messageInput.disabled = false;
       btnSendMessage.disabled = false;
-      console.log('✅ [選択] フレンドを選択しました。相手ID:', currentTargetFriendId);
       loadMessages();
     }
 
@@ -397,80 +392,51 @@
     }
 
     // --- WebRTC ＆ Realtime (通話機能) ---
-
-    // 通話ボタンのデバッグ用イベントリスナー
-    document.getElementById('btn-start-audio-call').onclick = () => {
-      console.log('📱 [通話ボタン] 音声通話がタップされました');
-      startCall(false);
-    };
-
-    document.getElementById('btn-start-video-call').onclick = () => {
-      console.log('📹 [通話ボタン] ビデオ通話がタップされました');
-      startCall(true);
-    };
+    document.getElementById('btn-start-audio-call').onclick = () => startCall(false);
+    document.getElementById('btn-start-video-call').onclick = () => startCall(true);
 
     function setupRealtime() {
-      // 1. DBメッセージ変更検知
+      // DBメッセージ変更検知
       supabaseClient.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-          console.log('⚡ [DB Realtime] メッセージを受信しました');
           if (currentMode === 'dm') loadMessages();
         })
-        .subscribe((status) => {
-          console.log('🔌 [DB Realtime ステータス]:', status);
-        });
+        .subscribe();
 
-      // 2. 通話用 Broadcast シグナリング
+      // 通話用 Broadcast シグナリング
       callChannel = supabaseClient.channel('call_signaling');
 
       callChannel
         .on('broadcast', { event: 'call-signal' }, async ({ payload }) => {
-          console.log('📡 [シグナル受信]:', payload);
-
-          // 自分宛ての通知でなければ無視
-          if (payload.targetId !== currentUser.id) {
-            console.log('⚠️ [シグナル] 自分のID宛ではないためスキップしました (targetId:', payload.targetId, ')');
-            return;
-          }
+          if (payload.targetId !== currentUser.id) return;
 
           if (payload.type === 'offer') {
-            console.log('📞 [オファー着信] 呼び出し画面を表示します');
             incomingSignalData = payload;
             openCallModal(`${payload.senderName} から着信中...`, payload.isVideo);
             document.getElementById('active-call-controls').classList.add('hidden');
             document.getElementById('incoming-call-controls').classList.remove('hidden');
           } 
           else if (payload.type === 'answer') {
-            console.log('✅ [アンサー受信] 通話が接続されました');
             document.getElementById('call-status-title').textContent = '通話中';
             if (peerConnection) {
               await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
             }
           } 
           else if (payload.type === 'candidate') {
-            console.log('🧊 [ICE Candidate 受信]');
             if (peerConnection && payload.candidate) {
               await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
             }
           } 
           else if (payload.type === 'end') {
-            console.log('🛑 [通話終了通知を受信]');
             closeCall();
           }
         })
-        .subscribe((status) => {
-          console.log('🔌 [通話 Realtime ステータス]:', status);
-        });
+        .subscribe();
     }
 
     // 通話発信処理
     async function startCall(isVideo) {
-      console.log('🚀 [startCall] 通話開始処理を起動します');
-      console.log('  - 自分のID:', currentUser ? currentUser.id : '未ログイン');
-      console.log('  - 相手のID:', currentTargetFriendId);
-
       if (!currentTargetFriendId) {
-        console.error('❌ [通話エラー] 送信相手 (currentTargetFriendId) が選択されていません');
         alert('通話する相手が選択されていません。DMリストからフレンドを選択してください。');
         return;
       }
@@ -480,10 +446,8 @@
       document.getElementById('incoming-call-controls').classList.add('hidden');
 
       try {
-        console.log('🎤 [メディア] マイク・カメラの許可を要求中...');
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
         document.getElementById('local-video').srcObject = localStream;
-        console.log('✅ [メディア] マイク・カメラの取得成功');
 
         peerConnection = createPeerConnection(currentTargetFriendId);
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -491,8 +455,7 @@
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
-        console.log('📡 [シグナル送信] オファーを送信しています...');
-        const res = await callChannel.send({
+        await callChannel.send({
           type: 'broadcast',
           event: 'call-signal',
           payload: {
@@ -504,11 +467,9 @@
             isVideo: isVideo
           }
         });
-        console.log('📡 [シグナル送信結果]:', res);
 
         document.getElementById('active-call-controls').classList.remove('hidden');
       } catch (err) {
-        console.error('❌ [通話例外エラー]:', err);
         alert('通話の開始に失敗しました: ' + err.message);
         closeCall();
       }
@@ -517,7 +478,6 @@
     // 応答処理
     document.getElementById('btn-accept-call').onclick = async () => {
       if (!incomingSignalData) return;
-      console.log('👍 [通話応答] 通話要求を承認しました');
 
       document.getElementById('incoming-call-controls').classList.add('hidden');
       document.getElementById('active-call-controls').classList.remove('hidden');
@@ -537,7 +497,6 @@
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
-        console.log('📡 [シグナル送信] アンサーを送信しています...');
         await callChannel.send({
           type: 'broadcast',
           event: 'call-signal',
@@ -551,7 +510,6 @@
 
         document.getElementById('call-status-title').textContent = '通話中';
       } catch (err) {
-        console.error('❌ [応答エラー]:', err);
         alert('通話の応答に失敗しました: ' + err.message);
         closeCall();
       }
@@ -559,7 +517,6 @@
 
     // 拒否処理
     document.getElementById('btn-reject-call').onclick = () => {
-      console.log('👎 [通話拒否]');
       if (incomingSignalData && callChannel) {
         callChannel.send({
           type: 'broadcast',
@@ -572,7 +529,6 @@
 
     // 切断ボタン
     document.getElementById('btn-end-call').onclick = () => {
-      console.log('🛑 [通話切断] 通話を終了します');
       if (currentTargetFriendId && callChannel) {
         callChannel.send({
           type: 'broadcast',
@@ -583,13 +539,12 @@
       closeCall();
     };
 
-    // PeerConnection作成ヘパー
+    // PeerConnection作成ヘルパー
     function createPeerConnection(targetId) {
       const pc = new RTCPeerConnection(rtcConfiguration);
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('🧊 [ICE Candidate 送信]');
           callChannel.send({
             type: 'broadcast',
             event: 'call-signal',
@@ -604,15 +559,10 @@
       };
 
       pc.ontrack = (event) => {
-        console.log('🎥 [リモート映像/音声を受信]');
         const remoteVideo = document.getElementById('remote-video');
         if (remoteVideo.srcObject !== event.streams[0]) {
           remoteVideo.srcObject = event.streams[0];
         }
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        console.log('🌐 [ICE 接続ステータス変更]:', pc.iceConnectionState);
       };
 
       return pc;
@@ -636,7 +586,6 @@
       document.getElementById('remote-video').srcObject = null;
       document.getElementById('call-modal').classList.add('hidden');
       incomingSignalData = null;
-      console.log('🧹 [通話クリーンアップ完了]');
     }
   </script>
 </body>
