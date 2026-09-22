@@ -16,8 +16,12 @@
       <h2 class="text-2xl font-bold mb-6 text-center text-indigo-400">Discord Clone</h2>
       <div id="auth-error" class="bg-red-500 text-white p-3 rounded mb-4 hidden text-sm"></div>
       <div class="mb-4">
-        <label class="block text-gray-300 text-sm font-bold mb-2">ユーザー名</label>
-        <input type="text" id="username" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
+        <label class="block text-gray-300 text-sm font-bold mb-2">ユーザーID名 (user_id_name)</label>
+        <input type="text" id="user-id-name" placeholder="例: Guest" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-300 text-sm font-bold mb-2">表示名 (display_name)</label>
+        <input type="text" id="display-name" placeholder="例: ゲスト" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
       </div>
       <div class="mb-6">
         <label class="block text-gray-300 text-sm font-bold mb-2">パスワード</label>
@@ -55,7 +59,7 @@
           <div class="mb-4">
             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">フレンド追加</h3>
             <div class="flex gap-1">
-              <input type="text" id="friend-username" placeholder="ユーザー名" class="w-full p-1.5 text-sm rounded bg-gray-800 text-white border border-gray-700 focus:outline-none">
+              <input type="text" id="friend-id-input" placeholder="ユーザーID名" class="w-full p-1.5 text-sm rounded bg-gray-800 text-white border border-gray-700 focus:outline-none">
               <button id="btn-add-friend" class="bg-indigo-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-indigo-700">追加</button>
             </div>
           </div>
@@ -175,13 +179,20 @@
     const chatTitle = document.getElementById('chat-title');
     const callButtons = document.getElementById('call-buttons');
 
-    // --- 認証機能 ---
+    // --- 認証機能 (profiles テーブルを参照) ---
     document.getElementById('btn-signup').onclick = async () => {
-      const username = document.getElementById('username').value.trim();
+      const userIdName = document.getElementById('user-id-name').value.trim();
+      const displayName = document.getElementById('display-name').value.trim() || userIdName;
       const password = document.getElementById('password').value;
-      if (!username || !password) return showError('ユーザー名とパスワードを入力してください');
+      
+      if (!userIdName || !password) return showError('ユーザーID名とパスワードを入力してください');
 
-      const { data, error } = await supabaseClient.from('users').insert([{ username, password }]).select().single();
+      const { data, error } = await supabaseClient.from('profiles').insert([{ 
+        user_id_name: userIdName, 
+        display_name: displayName,
+        password: password 
+      }]).select().single();
+      
       if (error) return showError('新規登録エラー: ' + error.message);
 
       currentUser = data;
@@ -190,12 +201,12 @@
     };
 
     document.getElementById('btn-login').onclick = async () => {
-      const username = document.getElementById('username').value.trim();
+      const userIdName = document.getElementById('user-id-name').value.trim();
       const password = document.getElementById('password').value;
-      if (!username || !password) return showError('ユーザー名とパスワードを入力してください');
+      if (!userIdName || !password) return showError('ユーザーID名とパスワードを入力してください');
 
-      const { data, error } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).single();
-      if (error || !data) return showError('ログイン失敗: ユーザー名かパスワードが違います');
+      const { data, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', userIdName).eq('password', password).single();
+      if (error || !data) return showError('ログイン失敗: ユーザーID名かパスワードが違います');
 
       currentUser = data;
       localStorage.setItem('discord_user', JSON.stringify(currentUser));
@@ -216,13 +227,13 @@
     function initApp() {
       authContainer.classList.add('hidden');
       appContainer.classList.remove('hidden');
-      userDisplay.textContent = `${currentUser.username} (${currentUser.id.substring(0, 6)}...)`;
+      userDisplay.textContent = `${currentUser.display_name} (@${currentUser.user_id_name})`;
 
       loadFriends();
       setupRealtime();
     }
 
-    // セッション自動復元
+    // セッション自動復元 (ローカルストレージ判定)
     const savedUser = localStorage.getItem('discord_user');
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
@@ -247,34 +258,35 @@
       loadLocalServers();
     };
 
-    // --- フレンド機能 ---
+    // --- フレンド機能 (friendships テーブルを参照) ---
     document.getElementById('btn-add-friend').onclick = async () => {
-      const friendName = document.getElementById('friend-username').value.trim();
-      if (!friendName) return;
+      const friendIdInput = document.getElementById('friend-id-input').value.trim();
+      if (!friendIdInput) return;
 
-      const { data: targetUser, error } = await supabaseClient.from('users').select('*').eq('username', friendName).single();
+      const { data: targetUser, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', friendIdInput).single();
       if (error || !targetUser) return alert('ユーザーが見つかりません');
       if (targetUser.id === currentUser.id) return alert('自分自身をフレンド追加することはできません');
 
-      await supabaseClient.from('friends').insert([
+      await supabaseClient.from('friendships').insert([
         { user_id: currentUser.id, friend_id: targetUser.id },
         { user_id: targetUser.id, friend_id: currentUser.id }
       ]);
 
-      document.getElementById('friend-username').value = '';
+      document.getElementById('friend-id-input').value = '';
       loadFriends();
     };
 
     async function loadFriends() {
-      const { data, error } = await supabaseClient.from('friends').select('friend_id, users!friends_friend_id_fkey(id, username)').eq('user_id', currentUser.id);
+      const { data, error } = await supabaseClient.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, display_name, user_id_name)').eq('user_id', currentUser.id);
       friendsList.innerHTML = '';
       if (error || !data) return;
 
       data.forEach(item => {
-        const friend = item.users;
+        const friend = item.profiles;
+        if (!friend) return;
         const div = document.createElement('div');
         div.className = 'p-2 rounded hover:bg-gray-800 cursor-pointer flex items-center justify-between text-sm';
-        div.innerHTML = `<span>👤 ${friend.username}</span>`;
+        div.innerHTML = `<span>👤 ${friend.display_name} (@${friend.user_id_name})</span>`;
         div.onclick = () => selectFriend(friend);
         friendsList.appendChild(div);
       });
@@ -283,7 +295,7 @@
     function selectFriend(friend) {
       currentTargetFriendId = friend.id;
       currentServerId = null;
-      chatTitle.textContent = `DM: ${friend.username}`;
+      chatTitle.textContent = `DM: ${friend.display_name}`;
       callButtons.classList.remove('hidden');
       messageInput.disabled = false;
       btnSendMessage.disabled = false;
@@ -342,7 +354,7 @@
       } else {
         const localMsgs = JSON.parse(localStorage.getItem(`msgs_${currentServerId}`) || '[]');
         localMsgs.push({
-          sender_name: currentUser.username,
+          sender_name: currentUser.display_name,
           content: content,
           created_at: new Date().toLocaleTimeString()
         });
@@ -358,14 +370,14 @@
 
       if (currentMode === 'dm') {
         if (!currentTargetFriendId) return;
-        const { data, error } = await supabaseClient.from('messages').select('*, users!messages_sender_id_fkey(username)')
+        const { data, error } = await supabaseClient.from('messages').select('*, profiles!messages_sender_id_fkey(display_name)')
           .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},receiver_id.eq.${currentUser.id})`)
           .order('created_at', { ascending: true });
 
         if (error || !data) return;
 
         data.forEach(msg => {
-          renderMessage(msg.users ? msg.users.username : '不明', msg.content, new Date(msg.created_at).toLocaleTimeString());
+          renderMessage(msg.profiles ? msg.profiles.display_name : '不明', msg.content, new Date(msg.created_at).toLocaleTimeString());
         });
       } else {
         if (!currentServerId) return;
@@ -461,7 +473,7 @@
           payload: {
             type: 'offer',
             senderId: currentUser.id,
-            senderName: currentUser.username,
+            senderName: currentUser.display_name,
             targetId: currentTargetFriendId,
             sdp: offer,
             isVideo: isVideo
