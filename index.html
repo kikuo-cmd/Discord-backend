@@ -5,155 +5,193 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Discord Clone</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* カスタムスクロールバーなどのスタイル */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #2f3136;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #202225;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body class="bg-gray-800 text-white font-sans antialiased h-screen flex flex-col">
+<body class="bg-gray-900 text-white font-sans antialiased h-screen flex flex-col select-none overflow-hidden">
 
-  <!-- ログイン・新規登録画面 -->
-  <div id="auth-container" class="flex-1 flex items-center justify-center bg-gray-900 p-4">
-    <div class="bg-gray-800 p-8 rounded-lg shadow-md w-full max-w-md">
-      <h2 class="text-2xl font-bold mb-6 text-center text-indigo-400">Discord Clone</h2>
-      <div id="auth-error" class="bg-red-500 text-white p-3 rounded mb-4 hidden text-sm"></div>
-      <div class="mb-4">
-        <label class="block text-gray-300 text-sm font-bold mb-2">ユーザーID名 (user_id_name)</label>
-        <input type="text" id="user-id-name" placeholder="例: Guest" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
+  <!-- 認証画面（ログイン / 新規登録） -->
+  <div id="auth-container" class="flex-1 flex items-center justify-center bg-gray-900 p-4 z-50">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+      <div class="text-center mb-6">
+        <h2 class="text-2xl font-bold text-indigo-400">おかえりなさい！</h2>
+        <p class="text-gray-400 text-sm mt-1">Discord Cloneへログインしてください</p>
       </div>
-      <div class="mb-4">
-        <label class="block text-gray-300 text-sm font-bold mb-2">表示名 (display_name)</label>
-        <input type="text" id="display-name" placeholder="例: ゲスト" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
-      </div>
-      <div class="mb-6">
-        <label class="block text-gray-300 text-sm font-bold mb-2">パスワード</label>
-        <input type="password" id="password" class="w-full p-2.5 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500">
-      </div>
-      <div class="flex gap-4">
-        <button id="btn-login" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition">ログイン</button>
-        <button id="btn-signup" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition">新規登録</button>
+      <div id="auth-error" class="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 hidden text-sm"></div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-gray-300 text-xs font-bold uppercase mb-2">ユーザーID名 (user_id_name)</label>
+          <input type="text" id="user-id-name" placeholder="例: guest123" class="w-full p-2.5 rounded bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 text-xs font-bold uppercase mb-2">表示名 (display_name)</label>
+          <input type="text" id="display-name" placeholder="例: ゲストユーザー" class="w-full p-2.5 rounded bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 text-xs font-bold uppercase mb-2">パスワード</label>
+          <input type="password" id="password" class="w-full p-2.5 rounded bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button id="btn-login" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded transition">ログイン</button>
+          <button id="btn-signup" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 px-4 rounded transition">新規登録</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- メインアプリ画面 -->
+  <!-- メインアプリUI -->
   <div id="app-container" class="flex-1 flex overflow-hidden hidden">
-    <!-- サイドバー -->
-    <div class="w-64 bg-gray-900 flex flex-col border-r border-gray-700">
-      <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-        <div>
-          <h1 class="font-bold text-lg text-indigo-400">My Discord</h1>
-          <p id="user-display" class="text-xs text-gray-400"></p>
-        </div>
-        <button id="btn-logout" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded">ログアウト</button>
-      </div>
-
-      <!-- タブ切り替え (DM / サーバー) -->
-      <div class="flex border-b border-gray-800 bg-gray-950">
-        <button id="tab-dm" class="flex-1 py-2 text-sm font-semibold text-indigo-400 border-b-2 border-indigo-500">DM</button>
-        <button id="tab-server" class="flex-1 py-2 text-sm font-semibold text-gray-400 border-b-2 border-transparent">サーバー</button>
-      </div>
-
-      <!-- リストエリア -->
-      <div class="flex-1 overflow-y-auto p-3 space-y-4">
-        <!-- DM セクション -->
-        <div id="section-dm">
-          <div class="mb-4">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">フレンド追加</h3>
-            <div class="flex gap-1">
-              <input type="text" id="friend-id-input" placeholder="ユーザーID名" class="w-full p-1.5 text-sm rounded bg-gray-800 text-white border border-gray-700 focus:outline-none">
-              <button id="btn-add-friend" class="bg-indigo-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-indigo-700">追加</button>
-            </div>
-          </div>
-          <div>
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ダイレクトメッセージ</h3>
-            <div id="friends-list" class="space-y-1"></div>
-          </div>
-        </div>
-
-        <!-- サーバー セクション -->
-        <div id="section-server" class="hidden">
-          <div class="mb-4">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">サーバーを作成</h3>
-            <div class="flex gap-1">
-              <input type="text" id="new-server-name" placeholder="サーバー名" class="w-full p-1.5 text-sm rounded bg-gray-800 text-white border border-gray-700 focus:outline-none">
-              <button id="btn-create-server" class="bg-indigo-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-indigo-700">作成</button>
-            </div>
-          </div>
-          <div>
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">参加中のサーバー</h3>
-            <div id="servers-list" class="space-y-1"></div>
-          </div>
-        </div>
-      </div>
+    
+    <!-- 1. 最左端：サーバーアイコンバー -->
+    <div class="w-18 bg-gray-950 flex flex-col items-center py-3 gap-2 border-r border-gray-800 z-10 w-[72px]">
+      <!-- DMホームボタン -->
+      <button id="btn-home" class="w-12 h-12 rounded-3xl bg-gray-700 hover:bg-indigo-600 hover:rounded-2xl flex items-center justify-center transition-all duration-200 group relative">
+        <span class="text-xl">🏠</span>
+      </button>
+      <div class="w-8 h-[2px] bg-gray-800 rounded"></div>
+      
+      <!-- サーバーアイコン一覧 (JavaScriptで動的生成) -->
+      <div id="server-icons-list" class="flex-1 w-full flex flex-col items-center gap-2 overflow-y-auto"></div>
     </div>
 
-    <!-- メインコンテンツ (チャット) -->
-    <div class="flex-1 flex flex-col bg-gray-800">
-      <!-- ヘッダー -->
-      <div class="h-14 border-b border-gray-700 flex items-center justify-between px-6 bg-gray-800">
-        <div class="flex items-center gap-2">
-          <span class="text-gray-400 text-xl">#</span>
-          <span id="chat-title" class="font-bold text-lg">フレンドまたはサーバーを選択してください</span>
+    <!-- 2. サイドバー：ダイレクトメッセージ / サーバーチャンネル パネル -->
+    <div class="w-60 bg-gray-800 flex flex-col border-r border-gray-900">
+      
+      <!-- DMモード時のサイドバーコンテンツ -->
+      <div id="sidebar-dm" class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-3 border-b border-gray-900 shadow-sm">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">フレンド追加</h3>
+          <div class="flex gap-1">
+            <input type="text" id="friend-id-input" placeholder="ユーザーID名" class="w-full p-1.5 text-xs rounded bg-gray-900 text-white border border-gray-700 focus:outline-none">
+            <button id="btn-add-friend" class="bg-indigo-600 text-xs px-2.5 py-1.5 rounded font-bold hover:bg-indigo-500 transition">追加</button>
+          </div>
         </div>
+        <div class="flex-1 overflow-y-auto p-2">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 my-2">ダイレクトメッセージ</h3>
+          <div id="friends-list" class="space-y-0.5"></div>
+        </div>
+      </div>
+
+      <!-- サーバーモード時のサイドバーコンテンツ -->
+      <div id="sidebar-server" class="flex-1 flex flex-col overflow-hidden hidden">
+        <div class="p-3 border-b border-gray-900 shadow-sm">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">サーバーを作成</h3>
+          <div class="flex gap-1">
+            <input type="text" id="new-server-name" placeholder="サーバー名" class="w-full p-1.5 text-xs rounded bg-gray-900 text-white border border-gray-700 focus:outline-none">
+            <button id="btn-create-server" class="bg-indigo-600 text-xs px-2.5 py-1.5 rounded font-bold hover:bg-indigo-500 transition">作成</button>
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 my-2">テキストチャンネル</h3>
+          <div id="channels-list" class="space-y-0.5">
+            <div class="p-2 rounded bg-gray-700/50 text-white text-sm flex items-center gap-2 cursor-pointer">
+              <span class="text-gray-400">#</span> general
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- サイドバー最下部：ログインユーザープロフィールバー -->
+      <div class="h-14 bg-gray-900 px-3 flex items-center justify-between border-t border-gray-950">
+        <div class="flex items-center gap-2 overflow-hidden">
+          <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+            👤
+          </div>
+          <div class="overflow-hidden">
+            <div id="user-display-name" class="text-sm font-bold truncate">ユーザー名</div>
+            <div id="user-id-display" class="text-xs text-gray-400 truncate">@userid</div>
+          </div>
+        </div>
+        <button id="btn-logout" title="ログアウト" class="text-gray-400 hover:text-red-400 p-1 rounded transition text-xs">
+          🚪
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 3. メインチャットエリア -->
+    <div class="flex-1 flex flex-col bg-gray-700">
+      
+      <!-- ヘッダー -->
+      <div class="h-12 border-b border-gray-900 flex items-center justify-between px-4 bg-gray-700 shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-400 text-lg font-bold">#</span>
+          <span id="chat-title" class="font-bold text-white">フレンドまたはサーバーを選択してください</span>
+        </div>
+        
         <!-- 通話ボタン (DM選択時のみ表示) -->
         <div id="call-buttons" class="flex gap-2 hidden">
-          <button id="btn-start-audio-call" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1">
-            📞 音声通話
+          <button id="btn-start-audio-call" title="音声通話を開始" class="bg-gray-800 hover:bg-green-600 text-white p-2 rounded-full transition flex items-center justify-center">
+            📞
           </button>
-          <button id="btn-start-video-call" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1">
-            📹 ビデオ通話
+          <button id="btn-start-video-call" title="ビデオ通話を開始" class="bg-gray-800 hover:bg-indigo-600 text-white p-2 rounded-full transition flex items-center justify-center">
+            📹
           </button>
         </div>
       </div>
 
-      <!-- メッセージリスト -->
-      <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+      <!-- メッセージ表示領域 -->
+      <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
 
       <!-- メッセージ入力フォーム -->
-      <div class="p-4 bg-gray-800 border-t border-gray-700">
+      <div class="p-4 bg-gray-700">
         <form id="message-form" class="flex gap-2">
-          <input type="text" id="message-input" placeholder="メッセージを送信..." class="flex-1 p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-indigo-500" disabled>
-          <button type="submit" id="btn-send-message" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold disabled:opacity-50" disabled>送信</button>
+          <input type="text" id="message-input" placeholder="メッセージを入力..." class="flex-1 p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 border-none" disabled>
+          <button type="submit" id="btn-send-message" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-lg font-bold transition disabled:opacity-50" disabled>送信</button>
         </form>
       </div>
+
     </div>
+
   </div>
 
-  <!-- 通話モーダル (ダイアログ) -->
+  <!-- WebRTC 通話モーダル -->
   <div id="call-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center hidden z-50">
-    <div class="bg-gray-900 p-6 rounded-xl max-w-lg w-full flex flex-col items-center">
-      <h3 id="call-status-title" class="text-xl font-bold mb-4 text-center">通話中...</h3>
+    <div class="bg-gray-800 p-6 rounded-2xl max-w-lg w-full flex flex-col items-center border border-gray-700 shadow-2xl">
+      <h3 id="call-status-title" class="text-xl font-bold mb-4 text-center text-white">通話中...</h3>
       
-      <!-- 映像表示エリア -->
-      <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden mb-6 flex items-center justify-center">
+      <div class="relative w-full aspect-video bg-gray-950 rounded-xl overflow-hidden mb-6 flex items-center justify-center border border-gray-800">
         <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
-        <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-32 aspect-video bg-gray-800 rounded border border-gray-600 object-cover"></video>
+        <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-32 aspect-video bg-gray-900 rounded-lg border border-gray-700 object-cover shadow-lg"></video>
       </div>
 
-      <!-- 通話操作ボタン -->
       <div id="active-call-controls" class="flex gap-4">
-        <button id="btn-end-call" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-bold">切断</button>
+        <button id="btn-end-call" class="bg-red-600 hover:bg-red-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition">切断</button>
       </div>
       <div id="incoming-call-controls" class="flex gap-4 hidden">
-        <button id="btn-accept-call" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold">応答</button>
-        <button id="btn-reject-call" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-bold">拒否</button>
+        <button id="btn-accept-call" class="bg-green-600 hover:bg-green-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition">応答</button>
+        <button id="btn-reject-call" class="bg-red-600 hover:bg-red-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition">拒否</button>
       </div>
     </div>
   </div>
 
-  <!-- アプリのメインJS処理 -->
+  <!-- メインスクリプト -->
   <script>
-    // --- Supabase設定 ---
+    // Supabase 設定
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // --- グローバル状態管理 ---
+    // グローバル状態
     let currentUser = null;
     let currentMode = 'dm'; // 'dm' または 'server'
     let currentTargetFriendId = null;
     let currentServerId = null;
 
-    // WebRTC用変数
+    // WebRTC 状態
     let localStream = null;
     let peerConnection = null;
     let callChannel = null;
@@ -166,20 +204,21 @@
       ]
     };
 
-    // --- DOM要素 ---
+    // DOM 要素
     const authContainer = document.getElementById('auth-container');
     const appContainer = document.getElementById('app-container');
     const authError = document.getElementById('auth-error');
-    const userDisplay = document.getElementById('user-display');
+    const userDisplayName = document.getElementById('user-display-name');
+    const userIdDisplay = document.getElementById('user-id-display');
     const friendsList = document.getElementById('friends-list');
-    const serversList = document.getElementById('servers-list');
+    const serverIconsList = document.getElementById('server-icons-list');
     const messagesContainer = document.getElementById('messages-container');
     const messageInput = document.getElementById('message-input');
     const btnSendMessage = document.getElementById('btn-send-message');
     const chatTitle = document.getElementById('chat-title');
     const callButtons = document.getElementById('call-buttons');
 
-    // --- 認証機能 (profiles テーブルを参照) ---
+    // 認証処理 (profiles テーブル参照)
     document.getElementById('btn-signup').onclick = async () => {
       const userIdName = document.getElementById('user-id-name').value.trim();
       const displayName = document.getElementById('display-name').value.trim() || userIdName;
@@ -223,42 +262,39 @@
       authError.classList.remove('hidden');
     }
 
-    // --- アプリ初期化 ---
+    // アプリ初期化
     function initApp() {
       authContainer.classList.add('hidden');
       appContainer.classList.remove('hidden');
-      userDisplay.textContent = `${currentUser.display_name} (@${currentUser.user_id_name})`;
+      userDisplayName.textContent = currentUser.display_name;
+      userIdDisplay.textContent = `@${currentUser.user_id_name}`;
 
       loadFriends();
+      loadServersList();
       setupRealtime();
     }
 
-    // セッション自動復元 (ローカルストレージ判定)
+    // 自動ログイン復元
     const savedUser = localStorage.getItem('discord_user');
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
       initApp();
     }
 
-    // --- タブ切り替え ---
-    document.getElementById('tab-dm').onclick = () => {
+    // モード切り替え（DMホームアイコンクリック）
+    document.getElementById('btn-home').onclick = () => {
       currentMode = 'dm';
-      document.getElementById('tab-dm').className = 'flex-1 py-2 text-sm font-semibold text-indigo-400 border-b-2 border-indigo-500';
-      document.getElementById('tab-server').className = 'flex-1 py-2 text-sm font-semibold text-gray-400 border-b-2 border-transparent';
-      document.getElementById('section-dm').classList.remove('hidden');
-      document.getElementById('section-server').classList.add('hidden');
+      currentServerId = null;
+      document.getElementById('sidebar-dm').classList.remove('hidden');
+      document.getElementById('sidebar-server').classList.add('hidden');
+      chatTitle.textContent = 'フレンドを選択してください';
+      callButtons.classList.add('hidden');
+      messageInput.disabled = true;
+      btnSendMessage.disabled = true;
+      messagesContainer.innerHTML = '';
     };
 
-    document.getElementById('tab-server').onclick = () => {
-      currentMode = 'server';
-      document.getElementById('tab-server').className = 'flex-1 py-2 text-sm font-semibold text-indigo-400 border-b-2 border-indigo-500';
-      document.getElementById('tab-dm').className = 'flex-1 py-2 text-sm font-semibold text-gray-400 border-b-2 border-transparent';
-      document.getElementById('section-server').classList.remove('hidden');
-      document.getElementById('section-dm').classList.add('hidden');
-      loadLocalServers();
-    };
-
-    // --- フレンド機能 (friendships テーブルを参照) ---
+    // フレンド追加 (friendships テーブルを参照)
     document.getElementById('btn-add-friend').onclick = async () => {
       const friendIdInput = document.getElementById('friend-id-input').value.trim();
       if (!friendIdInput) return;
@@ -285,8 +321,8 @@
         const friend = item.profiles;
         if (!friend) return;
         const div = document.createElement('div');
-        div.className = 'p-2 rounded hover:bg-gray-800 cursor-pointer flex items-center justify-between text-sm';
-        div.innerHTML = `<span>👤 ${friend.display_name} (@${friend.user_id_name})</span>`;
+        div.className = 'p-2 rounded hover:bg-gray-700/60 cursor-pointer flex items-center justify-between text-sm transition';
+        div.innerHTML = `<span class="font-medium text-gray-200">👤 ${friend.display_name}</span><span class="text-xs text-gray-400">@${friend.user_id_name}</span>`;
         div.onclick = () => selectFriend(friend);
         friendsList.appendChild(div);
       });
@@ -295,14 +331,14 @@
     function selectFriend(friend) {
       currentTargetFriendId = friend.id;
       currentServerId = null;
-      chatTitle.textContent = `DM: ${friend.display_name}`;
+      chatTitle.textContent = `${friend.display_name} (@${friend.user_id_name})`;
       callButtons.classList.remove('hidden');
       messageInput.disabled = false;
       btnSendMessage.disabled = false;
       loadMessages();
     }
 
-    // --- ローカルサーバー機能 ---
+    // サーバー作成＆リスト表示
     document.getElementById('btn-create-server').onclick = () => {
       const serverName = document.getElementById('new-server-name').value.trim();
       if (!serverName) return;
@@ -313,33 +349,39 @@
       localStorage.setItem('my_servers', JSON.stringify(servers));
 
       document.getElementById('new-server-name').value = '';
-      loadLocalServers();
+      loadServersList();
     };
 
-    function loadLocalServers() {
+    function loadServersList() {
       const servers = JSON.parse(localStorage.getItem('my_servers') || '[]');
-      serversList.innerHTML = '';
+      serverIconsList.innerHTML = '';
 
       servers.forEach(srv => {
-        const div = document.createElement('div');
-        div.className = 'p-2 rounded hover:bg-gray-800 cursor-pointer flex items-center justify-between text-sm';
-        div.innerHTML = `<span>🌐 ${srv.name}</span>`;
-        div.onclick = () => selectServer(srv);
-        serversList.appendChild(div);
+        const btn = document.createElement('button');
+        btn.className = 'w-12 h-12 rounded-3xl bg-gray-700 hover:bg-indigo-600 hover:rounded-2xl flex items-center justify-center transition-all duration-200 text-sm font-bold';
+        btn.textContent = srv.name.substring(0, 2);
+        btn.title = srv.name;
+        btn.onclick = () => selectServer(srv);
+        serverIconsList.appendChild(btn);
       });
     }
 
     function selectServer(server) {
+      currentMode = 'server';
       currentServerId = server.id;
       currentTargetFriendId = null;
-      chatTitle.textContent = `サーバー: ${server.name}`;
+
+      document.getElementById('sidebar-dm').classList.add('hidden');
+      document.getElementById('sidebar-server').classList.remove('hidden');
+
+      chatTitle.textContent = `サーバー: ${server.name} (# general)`;
       callButtons.classList.add('hidden');
       messageInput.disabled = false;
       btnSendMessage.disabled = false;
       loadMessages();
     }
 
-    // --- メッセージ機能 ---
+    // メッセージ送信・読み込み
     document.getElementById('message-form').onsubmit = async (e) => {
       e.preventDefault();
       const content = messageInput.value.trim();
@@ -396,26 +438,26 @@
       div.innerHTML = `
         <div class="flex items-baseline gap-2">
           <span class="font-bold text-indigo-400 text-sm">${sender}</span>
-          <span class="text-xs text-gray-500">${time}</span>
+          <span class="text-[10px] text-gray-400">${time}</span>
         </div>
-        <div class="text-gray-200 mt-1 bg-gray-700/50 p-2.5 rounded-lg inline-block max-w-xl self-start">${text}</div>
+        <div class="text-gray-200 mt-1 bg-gray-800/80 p-2.5 rounded-lg inline-block max-w-xl self-start border border-gray-700/50">${text}</div>
       `;
       messagesContainer.appendChild(div);
     }
 
-    // --- WebRTC ＆ Realtime (通話機能) ---
+    // WebRTC ＆ Supabase Realtime (通話)
     document.getElementById('btn-start-audio-call').onclick = () => startCall(false);
     document.getElementById('btn-start-video-call').onclick = () => startCall(true);
 
     function setupRealtime() {
-      // DBメッセージ変更検知
+      // リアルタイムメッセージ受信
       supabaseClient.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
           if (currentMode === 'dm') loadMessages();
         })
         .subscribe();
 
-      // 通話用 Broadcast シグナリング
+      // 通話用 Broadcast
       callChannel = supabaseClient.channel('call_signaling');
 
       callChannel
@@ -446,12 +488,8 @@
         .subscribe();
     }
 
-    // 通話発信処理
     async function startCall(isVideo) {
-      if (!currentTargetFriendId) {
-        alert('通話する相手が選択されていません。DMリストからフレンドを選択してください。');
-        return;
-      }
+      if (!currentTargetFriendId) return alert('相手を選択してください');
 
       openCallModal('呼び出し中...', isVideo);
       document.getElementById('active-call-controls').classList.add('hidden');
@@ -487,7 +525,6 @@
       }
     }
 
-    // 応答処理
     document.getElementById('btn-accept-call').onclick = async () => {
       if (!incomingSignalData) return;
 
@@ -527,7 +564,6 @@
       }
     };
 
-    // 拒否処理
     document.getElementById('btn-reject-call').onclick = () => {
       if (incomingSignalData && callChannel) {
         callChannel.send({
@@ -539,7 +575,6 @@
       closeCall();
     };
 
-    // 切断ボタン
     document.getElementById('btn-end-call').onclick = () => {
       if (currentTargetFriendId && callChannel) {
         callChannel.send({
@@ -551,7 +586,6 @@
       closeCall();
     };
 
-    // PeerConnection作成ヘルパー
     function createPeerConnection(targetId) {
       const pc = new RTCPeerConnection(rtcConfiguration);
 
