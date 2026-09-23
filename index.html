@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discord Clone with Supabase, WebRTC & Bot</title>
+  <title>Discord Clone with Supabase & Jitsi Meet</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Jitsi Meet API -->
+  <script src="https://meet.jit.si/external_api.js"></script>
   <style>
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #2f3136; }
@@ -97,11 +99,9 @@
 
           <!-- 通話ボタン (DM選択時のみ表示) -->
           <div id="call-buttons" class="flex items-center space-x-2 hidden">
-            <button id="btn-start-audio-call" title="音声通話を開始" class="p-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-full transition">
-              <i data-lucide="phone" class="w-5 h-5"></i>
-            </button>
-            <button id="btn-start-video-call" title="ビデオ通話を開始" class="p-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-full transition">
-              <i data-lucide="video" class="w-5 h-5"></i>
+            <button id="btn-start-call" title="通話を開始 (Jitsi Meet)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium flex items-center space-x-1.5 transition">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+              <span>通話開始</span>
             </button>
           </div>
         </div>
@@ -149,38 +149,16 @@
       </div>
     </div>
 
-    <!-- 通話モーダル (WebRTC) -->
-    <div id="call-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
-      <div class="bg-[#2f3136] p-6 rounded-2xl shadow-2xl w-[600px] border border-gray-700 flex flex-col items-center">
-        <h2 id="call-status-title" class="text-xl font-bold text-white mb-4">通話中...</h2>
-
-        <div id="video-container" class="relative w-full h-80 bg-black rounded-lg overflow-hidden mb-6 flex items-center justify-center">
-          <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
-          <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-32 h-24 bg-gray-800 rounded-lg border-2 border-indigo-500 object-cover"></video>
-        </div>
-
-        <!-- 着信時コントロール -->
-        <div id="incoming-call-controls" class="flex gap-4 hidden">
-          <button id="btn-accept-call" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-full font-bold flex items-center space-x-2">
-            <i data-lucide="phone-call" class="w-5 h-5"></i><span>応答</span>
-          </button>
-          <button id="btn-reject-call" class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold flex items-center space-x-2">
-            <i data-lucide="phone-off" class="w-5 h-5"></i><span>拒否</span>
+    <!-- 通話モーダル (Jitsi Meet 埋め込み) -->
+    <div id="jitsi-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+      <div class="bg-[#2f3136] p-4 rounded-2xl shadow-2xl w-[90vw] h-[85vh] border border-gray-700 flex flex-col">
+        <div class="flex justify-between items-center mb-2 px-2">
+          <h2 class="text-lg font-bold text-white">通話中 (Jitsi Meet)</h2>
+          <button id="btn-close-jitsi" class="p-1 text-gray-400 hover:text-white rounded-lg bg-gray-700 hover:bg-gray-600">
+            <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
-
-        <!-- 通話中コントロール -->
-        <div id="active-call-controls" class="flex gap-4">
-          <button id="btn-toggle-mic" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition" title="マイクON/OFF">
-            <i data-lucide="mic" class="w-6 h-6"></i>
-          </button>
-          <button id="btn-toggle-cam" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition" title="カメラON/OFF">
-            <i data-lucide="video" class="w-6 h-6"></i>
-          </button>
-          <button id="btn-end-call" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition" title="切断">
-            <i data-lucide="phone-off" class="w-6 h-6"></i>
-          </button>
-        </div>
+        <div id="jitsi-container" class="flex-1 w-full bg-black rounded-lg overflow-hidden"></div>
       </div>
     </div>
   </div>
@@ -208,15 +186,7 @@
     let servers = JSON.parse(localStorage.getItem('my_discord_servers')) || [];
     let channels = JSON.parse(localStorage.getItem('my_discord_channels')) || [];
 
-    // WebRTC 変数
-    let peerConnection = null;
-    let localStream = null;
-    let callChannel = null;
-    let incomingSignalData = null;
-    let isMicMuted = false;
-    let isCamDisabled = false;
-
-    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    let jitsiApi = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
@@ -287,6 +257,7 @@
 
       initServerEvents();
       initFriendEvents();
+      initCallEvents();
       renderServerList();
       renderSidebar();
       renderMainArea();
@@ -499,7 +470,33 @@
       lucide.createIcons();
     }
 
-    // メッセージ取得・表示
+    // -------------------------------------------------------------
+    // メッセージ追加用描画関数 (重複防止の核心処理)
+    // -------------------------------------------------------------
+    function appendMessageElement(msg) {
+      const container = document.getElementById('message-container');
+      const senderName = msg.sender ? msg.sender.display_name : (msg.sender_name || 'ユーザー');
+      const isBot = msg.is_bot ? '<span class="bg-indigo-600 text-[10px] text-white font-bold px-1 rounded ml-1">BOT</span>' : '';
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'flex items-start space-x-3 p-1 rounded';
+      msgEl.dataset.msgId = msg.id || '';
+      msgEl.innerHTML = `
+        <div class="w-8 h-8 rounded-full ${msg.is_bot ? 'bg-green-600' : 'bg-indigo-500'} flex items-center justify-center font-bold text-white flex-shrink-0">${senderName.charAt(0)}</div>
+        <div>
+          <div class="flex items-center space-x-1">
+            <span class="font-bold text-sm text-white">${senderName}</span>
+            ${isBot}
+            <span class="text-[10px] text-gray-400 ml-2">${new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div class="text-sm text-gray-200">${msg.content}</div>
+        </div>
+      `;
+      container.appendChild(msgEl);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // 全メッセージ再読み込み（画面切替時のみ）
     async function loadMessages() {
       const container = document.getElementById('message-container');
       container.innerHTML = '';
@@ -512,34 +509,17 @@
         messages = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
       }
 
-      messages.forEach(msg => {
-        const senderName = msg.sender ? msg.sender.display_name : (msg.sender_name || 'ユーザー');
-        const isBot = msg.is_bot ? '<span class="bg-indigo-600 text-[10px] text-white font-bold px-1 rounded ml-1">BOT</span>' : '';
-
-        const msgEl = document.createElement('div');
-        msgEl.className = 'flex items-start space-x-3 p-1 rounded';
-        msgEl.innerHTML = `
-          <div class="w-8 h-8 rounded-full ${msg.is_bot ? 'bg-green-600' : 'bg-indigo-500'} flex items-center justify-center font-bold text-white flex-shrink-0">${senderName.charAt(0)}</div>
-          <div>
-            <div class="flex items-center space-x-1">
-              <span class="font-bold text-sm text-white">${senderName}</span>
-              ${isBot}
-              <span class="text-[10px] text-gray-400 ml-2">${new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div class="text-sm text-gray-200">${msg.content}</div>
-          </div>
-        `;
-        container.appendChild(msgEl);
-      });
-      container.scrollTop = container.scrollHeight;
+      messages.forEach(msg => appendMessageElement(msg));
     }
 
-    // メッセージ送信 & ボット自動応答
+    // メッセージ送信処理
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
       const text = input.value.trim();
       if (!text) return;
+
+      input.value = '';
 
       if (currentMode === 'dm') {
         if (!currentTargetFriendId) return;
@@ -547,221 +527,88 @@
       } else {
         if (!currentChannelId) return;
         const srvMsgs = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
-        srvMsgs.push({ sender_name: currentUser.display_name, content: text, created_at: new Date() });
+        
+        const userMsg = { sender_name: currentUser.display_name, content: text, created_at: new Date() };
+        srvMsgs.push(userMsg);
+        appendMessageElement(userMsg);
 
         if (text === '!ping') {
-          srvMsgs.push({ sender_name: 'Clyde Bot', content: 'pong! 🏓', is_bot: true, created_at: new Date() });
+          const botMsg = { sender_name: 'Clyde Bot', content: 'pong! 🏓', is_bot: true, created_at: new Date() };
+          srvMsgs.push(botMsg);
+          appendMessageElement(botMsg);
         } else if (text === '!dice') {
           const num = Math.floor(Math.random() * 6) + 1;
-          srvMsgs.push({ sender_name: 'Dice Bot', content: `🎲 サイコロの目は **${num}** です！`, is_bot: true, created_at: new Date() });
+          const botMsg = { sender_name: 'Dice Bot', content: `🎲 サイコロの目は **${num}** です！`, is_bot: true, created_at: new Date() };
+          srvMsgs.push(botMsg);
+          appendMessageElement(botMsg);
         }
 
         localStorage.setItem(`srv_msg_${currentChannelId}`, JSON.stringify(srvMsgs));
       }
-
-      input.value = '';
-      loadMessages();
     });
 
     // -------------------------------------------------------------
-    // 5. WebRTC & Realtime 通話 (完全修復版)
+    // 5. リアルタイムリスナー (メッセージ重複防止)
     // -------------------------------------------------------------
     function setupRealtime() {
-      // メッセージのリアルタイム受信
-      supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        if (currentMode === 'dm') loadMessages();
-      }).subscribe();
-
-      // WebRTC シグナリングチャンネル
-      callChannel = supabaseClient.channel('call_signaling');
-      callChannel.on('broadcast', { event: 'call-signal' }, async ({ payload }) => {
-        if (!payload || payload.targetId !== currentUser.id) return;
-
-        if (payload.type === 'offer') {
-          incomingSignalData = payload;
-          openCallModal(`${payload.senderName} から着信中...`, payload.isVideo);
-          document.getElementById('active-call-controls').classList.add('hidden');
-          document.getElementById('incoming-call-controls').classList.remove('hidden');
-        } else if (payload.type === 'answer' && peerConnection) {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          document.getElementById('call-status-title').textContent = '通話中';
-        } else if (payload.type === 'candidate' && peerConnection) {
-          try {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          } catch (e) {
-            console.error('ICE candidate error', e);
+      supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+        const newMsg = payload.new;
+        if (currentMode === 'dm' && currentTargetFriendId) {
+          const isRelevant = (newMsg.sender_id === currentUser.id && newMsg.target_id === currentTargetFriendId) ||
+                             (newMsg.sender_id === currentTargetFriendId && newMsg.target_id === currentUser.id);
+          
+          if (isRelevant) {
+            // 送信者プロファイルを取得して追加
+            const { data: senderProfile } = await supabaseClient.from('profiles').select('*').eq('id', newMsg.sender_id).single();
+            newMsg.sender = senderProfile;
+            appendMessageElement(newMsg);
           }
-        } else if (payload.type === 'hangup' || payload.type === 'reject') {
-          alert('通話が終了または拒否されました');
-          closeCall();
         }
       }).subscribe();
-
-      // イベントリスナー設定
-      document.getElementById('btn-start-audio-call').onclick = () => startCall(false);
-      document.getElementById('btn-start-video-call').onclick = () => startCall(true);
-      document.getElementById('btn-accept-call').onclick = acceptCall;
-      document.getElementById('btn-reject-call').onclick = () => {
-        if (incomingSignalData) {
-          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'reject', senderId: currentUser.id, targetId: incomingSignalData.senderId } });
-        }
-        closeCall();
-      };
-      document.getElementById('btn-end-call').onclick = () => {
-        const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
-        if (tid) {
-          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'hangup', senderId: currentUser.id, targetId: tid } });
-        }
-        closeCall();
-      };
-
-      // マイク & カメラ ON/OFF トグルボタン
-      document.getElementById('btn-toggle-mic').onclick = toggleMic;
-      document.getElementById('btn-toggle-cam').onclick = toggleCam;
     }
 
-    async function startCall(isVideo) {
-      if (!currentTargetFriendId) return alert('通話する相手を選択してください');
-      openCallModal('呼び出し中...', isVideo);
-      document.getElementById('active-call-controls').classList.remove('hidden');
-      document.getElementById('incoming-call-controls').classList.add('hidden');
-
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
-        document.getElementById('local-video').srcObject = localStream;
-        peerConnection = createPeerConnection();
-        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        callChannel.send({
-          type: 'broadcast',
-          event: 'call-signal',
-          payload: {
-            type: 'offer',
-            senderId: currentUser.id,
-            targetId: currentTargetFriendId,
-            senderName: currentUser.display_name,
-            sdp: offer,
-            isVideo: isVideo
-          }
-        });
-      } catch (err) {
-        alert('マイクまたはカメラのアクセスに失敗しました: ' + err.message);
-        closeCall();
-      }
+    // -------------------------------------------------------------
+    // 6. 外部通話サービス (Jitsi Meet 連携)
+    // -------------------------------------------------------------
+    function initCallEvents() {
+      document.getElementById('btn-start-call').onclick = startJitsiCall;
+      document.getElementById('btn-close-jitsi').onclick = closeJitsiCall;
     }
 
-    async function acceptCall() {
-      if (!incomingSignalData) return;
-      document.getElementById('incoming-call-controls').classList.add('hidden');
-      document.getElementById('active-call-controls').classList.remove('hidden');
+    function startJitsiCall() {
+      if (!currentTargetFriendId) return;
 
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingSignalData.isVideo });
-        document.getElementById('local-video').srcObject = localStream;
-        peerConnection = createPeerConnection();
-        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+      // お互いに一意なルーム名を生成 (ユーザーIDの昇順結合)
+      const ids = [currentUser.id, currentTargetFriendId].sort();
+      const roomName = `discord_clone_call_${ids[0]}_${ids[1]}`;
 
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingSignalData.sdp));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
+      document.getElementById('jitsi-modal').classList.remove('hidden');
 
-        callChannel.send({
-          type: 'broadcast',
-          event: 'call-signal',
-          payload: {
-            type: 'answer',
-            senderId: currentUser.id,
-            targetId: incomingSignalData.senderId,
-            sdp: answer
-          }
-        });
-        document.getElementById('call-status-title').textContent = '通話中';
-      } catch (err) {
-        alert('通話の応答に失敗しました: ' + err.message);
-        closeCall();
-      }
-    }
-
-    function createPeerConnection() {
-      const pc = new RTCPeerConnection(rtcConfig);
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
-          if (tid) {
-            callChannel.send({
-              type: 'broadcast',
-              event: 'call-signal',
-              payload: { type: 'candidate', senderId: currentUser.id, targetId: tid, candidate: e.candidate }
-            });
-          }
+      const domain = 'meet.jit.si';
+      const options = {
+        roomName: roomName,
+        width: '100%',
+        height: '100%',
+        parentNode: document.getElementById('jitsi-container'),
+        userInfo: {
+          displayName: currentUser.display_name
+        },
+        configOverwrite: {
+          startWithAudioMuted: false,
+          startWithVideoMuted: false
         }
       };
-      pc.ontrack = (e) => {
-        const remoteVideo = document.getElementById('remote-video');
-        if (remoteVideo) remoteVideo.srcObject = e.streams[0];
-      };
-      return pc;
+
+      if (jitsiApi) jitsiApi.dispose();
+      jitsiApi = new JitsiMeetExternalAPI(domain, options);
     }
 
-    function openCallModal(title, isVideo) {
-      document.getElementById('call-status-title').textContent = title;
-      document.getElementById('call-modal').classList.remove('hidden');
-      document.getElementById('video-container').style.display = isVideo ? 'flex' : 'none';
-      isMicMuted = false;
-      isCamDisabled = false;
-      updateControlButtons();
-    }
-
-    function toggleMic() {
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-          isMicMuted = !isMicMuted;
-          audioTrack.enabled = !isMicMuted;
-          updateControlButtons();
-        }
+    function closeJitsiCall() {
+      if (jitsiApi) {
+        jitsiApi.dispose();
+        jitsiApi = null;
       }
-    }
-
-    function toggleCam() {
-      if (localStream) {
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-          isCamDisabled = !isCamDisabled;
-          videoTrack.enabled = !isCamDisabled;
-          updateControlButtons();
-        }
-      }
-    }
-
-    function updateControlButtons() {
-      const micBtn = document.getElementById('btn-toggle-mic');
-      const camBtn = document.getElementById('btn-toggle-cam');
-
-      if (micBtn) micBtn.className = `p-3 rounded-full transition ${isMicMuted ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`;
-      if (camBtn) camBtn.className = `p-3 rounded-full transition ${isCamDisabled ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`;
-    }
-
-    function closeCall() {
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-      }
-
-      const localVideo = document.getElementById('local-video');
-      const remoteVideo = document.getElementById('remote-video');
-      if (localVideo) localVideo.srcObject = null;
-      if (remoteVideo) remoteVideo.srcObject = null;
-
-      incomingSignalData = null;
-      document.getElementById('call-modal').classList.add('hidden');
+      document.getElementById('jitsi-modal').classList.add('hidden');
     }
   </script>
 </body>
