@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discord Clone with Supabase & Jitsi Meet</title>
+  <title>Discord Clone with Agora RTC</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Jitsi Meet API -->
-  <script src="https://meet.jit.si/external_api.js"></script>
+  <!-- Agora Web SDK v4 -->
+  <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.20.0.js"></script>
   <style>
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #2f3136; }
@@ -18,11 +18,10 @@
 <body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
 
   <div id="app" class="flex h-screen w-screen relative">
-    <!-- ログイン / 登録 画面 -->
+    <!-- ログイン画面 -->
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
       <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h1 class="text-2xl font-bold text-white mb-2 text-center" id="auth-title">アカウント作成</h1>
-        
         <form id="auth-form" class="space-y-4 mt-4" onsubmit="return false;">
           <div>
             <label class="block text-xs font-bold text-gray-300 uppercase mb-1">アカウントID (@id)</label>
@@ -38,7 +37,6 @@
           </div>
           <button type="submit" id="auth-submit-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded transition text-sm">登録して始める</button>
         </form>
-
         <div class="mt-4 text-center">
           <button id="auth-toggle-btn" type="button" class="text-xs text-indigo-400 hover:underline">すでにアカウントをお持ちの方 (ログイン)</button>
         </div>
@@ -47,28 +45,21 @@
 
     <!-- メイン画面 -->
     <div id="main-screen" class="flex w-full h-full hidden">
-      <!-- サーバーアイコン一覧 (最左) -->
+      <!-- サーバーリスト -->
       <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0 border-r border-[#202225]">
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
         </button>
         <div class="w-8 h-[2px] bg-[#36393f] rounded"></div>
-        
         <div id="server-list" class="flex flex-col space-y-2 w-full items-center"></div>
-
-        <button id="btn-add-server" title="サーバーを作成" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-green-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-green-500 hover:text-white">
-          <i data-lucide="plus" class="w-6 h-6"></i>
-        </button>
       </div>
 
-      <!-- サイドバー (チャンネル/DMリスト) -->
+      <!-- サイドバー -->
       <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between font-bold text-white shadow-sm">
           <span id="sidebar-header-title">ダイレクトメッセージ</span>
         </div>
         <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
-        
-        <!-- ユーザー情報表示フッター -->
         <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
           <div class="flex items-center space-x-2 overflow-hidden p-1">
             <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
@@ -77,14 +68,9 @@
               <div id="my-username" class="text-xs text-gray-400 leading-tight truncate">@id</div>
             </div>
           </div>
-          <div class="flex items-center space-x-1">
-            <button id="btn-logout" type="button" title="ログアウト" class="p-1.5 text-gray-400 hover:text-yellow-400 rounded hover:bg-gray-700/50">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
-            </button>
-            <button id="btn-delete-account" type="button" title="アカウント削除" class="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-700/50">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
-          </div>
+          <button id="btn-logout" title="ログアウト" class="p-1.5 text-gray-400 hover:text-yellow-400 rounded hover:bg-gray-700/50">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
         </div>
       </div>
 
@@ -93,13 +79,11 @@
         <!-- ヘッダー -->
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
           <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
-            <i data-lucide="users" class="w-5 h-5 text-gray-400" id="header-icon"></i>
+            <i data-lucide="users" class="w-5 h-5 text-gray-400"></i>
             <span id="header-title">フレンド一覧</span>
           </div>
-
-          <!-- 通話ボタン (DM選択時のみ表示) -->
           <div id="call-buttons" class="flex items-center space-x-2 hidden">
-            <button id="btn-start-call" title="通話を開始 (Jitsi Meet)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium flex items-center space-x-1.5 transition">
+            <button id="btn-start-call" title="Agora通話開始" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium flex items-center space-x-1.5 transition">
               <i data-lucide="phone-call" class="w-4 h-4"></i>
               <span>通話開始</span>
             </button>
@@ -107,29 +91,25 @@
         </div>
 
         <div class="flex-1 flex overflow-hidden">
-          <!-- フレンド表示エリア -->
+          <!-- フレンド一覧 -->
           <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
             <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
               <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
-              <p class="text-xs text-gray-400 mb-3">Supabase上のリアルなアカウントID (@id) を検索して追加します</p>
               <form id="add-friend-form" class="flex gap-2" onsubmit="return false;">
                 <input type="text" id="friend-id-input" placeholder="アカウントIDを入力..." class="flex-1 bg-[#202225] border border-gray-700 rounded p-2 text-sm text-white focus:outline-none focus:border-indigo-500">
                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-medium">申請送信</button>
               </form>
             </div>
-            <h3 class="text-xs font-bold text-gray-400 uppercase mb-2">フレンドリスト</h3>
             <div id="friends-list" class="space-y-1"></div>
           </div>
 
-          <!-- チャット表示エリア -->
+          <!-- チャットエリア -->
           <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
             <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <div class="p-4 bg-[#36393f]">
               <form id="chat-form" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5" onsubmit="return false;">
-                <input type="text" id="chat-input" placeholder="メッセージを入力... (!ping や !dice でボットが反応します)" class="flex-1 bg-transparent text-white focus:outline-none text-sm">
-                <button type="submit" class="text-indigo-400 hover:text-indigo-300 ml-2">
-                  <i data-lucide="send" class="w-5 h-5"></i>
-                </button>
+                <input type="text" id="chat-input" placeholder="メッセージを入力..." class="flex-1 bg-transparent text-white focus:outline-none text-sm">
+                <button type="submit" class="text-indigo-400 hover:text-indigo-300 ml-2"><i data-lucide="send" class="w-5 h-5"></i></button>
               </form>
             </div>
           </div>
@@ -137,56 +117,50 @@
       </div>
     </div>
 
-    <!-- サーバー作成モーダル -->
-    <div id="add-server-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 hidden">
-      <div class="bg-[#36393f] p-6 rounded-lg shadow-2xl w-96 border border-gray-700">
-        <h2 class="text-xl font-bold text-white text-center mb-4">サーバーの作成</h2>
-        <input type="text" id="server-name-input" placeholder="サーバー名" class="w-full p-2.5 rounded bg-[#202225] border border-gray-700 text-white focus:outline-none focus:border-indigo-500 text-sm mb-4">
-        <div class="flex justify-end space-x-2">
-          <button id="btn-cancel-server" class="px-4 py-2 text-sm text-gray-300 hover:underline">キャンセル</button>
-          <button id="btn-create-server" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium">作成</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 通話モーダル (Jitsi Meet 埋め込み) -->
-    <div id="jitsi-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
-      <div class="bg-[#2f3136] p-4 rounded-2xl shadow-2xl w-[90vw] h-[85vh] border border-gray-700 flex flex-col">
+    <!-- Agoraビデオ通話モーダル -->
+    <div id="agora-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
+      <div class="bg-[#2f3136] p-4 rounded-2xl shadow-2xl w-[90vw] max-w-4xl h-[80vh] border border-gray-700 flex flex-col">
         <div class="flex justify-between items-center mb-2 px-2">
-          <h2 class="text-lg font-bold text-white">通話中 (Jitsi Meet)</h2>
-          <button id="btn-close-jitsi" class="p-1 text-gray-400 hover:text-white rounded-lg bg-gray-700 hover:bg-gray-600">
-            <i data-lucide="x" class="w-5 h-5"></i>
+          <h2 class="text-lg font-bold text-white">Agora ビデオ通話</h2>
+          <button id="btn-close-agora" class="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center space-x-1 text-xs font-bold">
+            <i data-lucide="phone-off" class="w-4 h-4"></i>
+            <span>通話を終了</span>
           </button>
         </div>
-        <div id="jitsi-container" class="flex-1 w-full bg-black rounded-lg overflow-hidden"></div>
+        <!-- ビデオ画面配置エリア -->
+        <div class="flex-1 grid grid-cols-2 gap-4 bg-black/50 p-4 rounded-xl overflow-hidden">
+          <div id="local-player" class="w-full h-full bg-gray-900 rounded-lg relative overflow-hidden flex items-center justify-center">
+            <span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">自分</span>
+          </div>
+          <div id="remote-player" class="w-full h-full bg-gray-900 rounded-lg relative overflow-hidden flex items-center justify-center">
+            <span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     // -------------------------------------------------------------
-    // Supabase 設定
+    // Agora & Supabase 設定
     // -------------------------------------------------------------
+    // ★ご自身の Agora App ID に置き換えてください
+    const AGORA_APP_ID = "9e8fb2f3c271483b8586c1659c93dccd";
+
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // -------------------------------------------------------------
-    // グローバル状態
-    // -------------------------------------------------------------
     const SESSION_KEY = 'my_discord_session';
     let currentUser = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
-    
-    let currentMode = 'dm'; // 'dm' または 'server'
+    let currentMode = 'dm';
     let currentTargetFriendId = null;
-    let currentServerId = null;
-    let currentChannelId = null;
 
-    let servers = JSON.parse(localStorage.getItem('my_discord_servers')) || [];
-    let channels = JSON.parse(localStorage.getItem('my_discord_channels')) || [];
-
-    let jitsiApi = null;
+    // Agora RTC クライアント変数の保持
+    let agoraClient = null;
+    let localAudioTrack = null;
+    let localVideoTrack = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
@@ -194,9 +168,7 @@
       if (currentUser) showMainApp();
     });
 
-    // -------------------------------------------------------------
-    // 1. 認証機能
-    // -------------------------------------------------------------
+    // 認証
     function initAuth() {
       const authForm = document.getElementById('auth-form');
       const toggleBtn = document.getElementById('auth-toggle-btn');
@@ -207,7 +179,6 @@
         isSignUpMode = !isSignUpMode;
         document.getElementById('display-name-group').style.display = isSignUpMode ? 'block' : 'none';
         document.getElementById('auth-submit-btn').textContent = isSignUpMode ? '登録して始める' : 'ログイン';
-        document.getElementById('auth-title').textContent = isSignUpMode ? 'アカウント作成' : 'おかえりなさい！';
       });
 
       authForm.addEventListener('submit', async (e) => {
@@ -216,200 +187,69 @@
         const password = document.getElementById('auth-password').value;
         const displayName = document.getElementById('auth-displayname').value.trim() || username;
 
-        if (!username || !password) return alert('入力してください');
-
-        try {
-          if (isSignUpMode) {
-            const { data, error } = await supabaseClient.from('profiles').insert({ user_id_name: username, display_name: displayName, password }).select().single();
-            if (error) return alert('登録エラー: ' + error.message);
-            currentUser = data;
-          } else {
-            const { data, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', username).eq('password', password).single();
-            if (error || !data) return alert('アカウントIDまたはパスワードが正しくありません');
-            currentUser = data;
-          }
-
-          localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
-          showMainApp();
-        } catch (err) { alert(err.message); }
+        if (isSignUpMode) {
+          const { data, error } = await supabaseClient.from('profiles').insert({ user_id_name: username, display_name: displayName, password }).select().single();
+          if (error) return alert(error.message);
+          currentUser = data;
+        } else {
+          const { data, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', username).eq('password', password).single();
+          if (error || !data) return alert('ログイン失敗');
+          currentUser = data;
+        }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+        showMainApp();
       });
 
       document.getElementById('btn-logout').onclick = () => { localStorage.removeItem(SESSION_KEY); location.reload(); };
-      document.getElementById('btn-delete-account').onclick = async () => {
-        if (!confirm('アカウントを削除しますか？')) return;
-        await supabaseClient.from('messages').delete().or(`sender_id.eq.${currentUser.id},target_id.eq.${currentUser.id}`);
-        await supabaseClient.from('profiles').delete().eq('id', currentUser.id);
-        localStorage.removeItem(SESSION_KEY);
-        location.reload();
-      };
     }
 
-    // -------------------------------------------------------------
-    // 2. メイン画面の構築
-    // -------------------------------------------------------------
     async function showMainApp() {
       document.getElementById('auth-screen').classList.add('hidden');
       document.getElementById('main-screen').classList.remove('hidden');
 
       document.getElementById('my-display-name').textContent = currentUser.display_name;
       document.getElementById('my-username').textContent = '@' + currentUser.user_id_name;
-      document.getElementById('my-avatar').textContent = currentUser.display_name.charAt(0).toUpperCase();
 
-      initServerEvents();
       initFriendEvents();
-      initCallEvents();
-      renderServerList();
+      initAgoraCallEvents();
       renderSidebar();
       renderMainArea();
       setupRealtime();
     }
 
-    // -------------------------------------------------------------
-    // フレンド追加イベント
-    // -------------------------------------------------------------
     function initFriendEvents() {
-      const addForm = document.getElementById('add-friend-form');
-      addForm.addEventListener('submit', async (e) => {
+      document.getElementById('add-friend-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const input = document.getElementById('friend-id-input');
         const targetUsername = input.value.trim();
-        if (!targetUsername) return;
+        const { data: targetUser } = await supabaseClient.from('profiles').select('*').eq('user_id_name', targetUsername).single();
+        if (!targetUser) return alert('ユーザーが見つかりません');
 
-        if (targetUsername === currentUser.user_id_name) {
-          return alert('自分自身にフレンド申請は送れません');
-        }
-
-        const { data: targetUser, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', targetUsername).single();
-        if (error || !targetUser) {
-          return alert('指定されたアカウントIDのユーザーが見つかりません');
-        }
-
-        const { data: existing } = await supabaseClient.from('friendships')
-          .select('*')
-          .or(`and(from_id.eq.${currentUser.id},to_id.eq.${targetUser.id}),and(from_id.eq.${targetUser.id},to_id.eq.${currentUser.id})`);
-
-        if (existing && existing.length > 0) {
-          return alert('すでにフレンド関係が存在します');
-        }
-
-        const { error: insertError } = await supabaseClient.from('friendships').insert({
-          from_id: currentUser.id,
-          to_id: targetUser.id
-        });
-
-        if (insertError) {
-          alert('フレンド申請エラー: ' + insertError.message);
-        } else {
-          alert(`${targetUser.display_name} にフレンド申請を送りました！`);
-          input.value = '';
-          renderFriendsList();
-        }
+        await supabaseClient.from('friendships').insert({ from_id: currentUser.id, to_id: targetUser.id });
+        alert('フレンド追加成功');
+        input.value = '';
+        renderFriendsList();
       });
     }
 
-    // -------------------------------------------------------------
-    // 3. サーバー機能
-    // -------------------------------------------------------------
-    function initServerEvents() {
-      document.getElementById('btn-dm-view').onclick = () => {
-        currentMode = 'dm';
-        currentServerId = null;
-        renderServerList();
-        renderSidebar();
-        renderMainArea();
-      };
-
-      document.getElementById('btn-add-server').onclick = () => {
-        document.getElementById('add-server-modal').classList.remove('hidden');
-      };
-      document.getElementById('btn-cancel-server').onclick = () => {
-        document.getElementById('add-server-modal').classList.add('hidden');
-      };
-      document.getElementById('btn-create-server').onclick = () => {
-        const name = document.getElementById('server-name-input').value.trim();
-        if (!name) return;
-
-        const newServer = { id: 'srv_' + Date.now(), name: name, icon: name.charAt(0) };
-        servers.push(newServer);
-        localStorage.setItem('my_discord_servers', JSON.stringify(servers));
-
-        const defaultChannel = { id: 'chn_' + Date.now(), serverId: newServer.id, name: '一般' };
-        channels.push(defaultChannel);
-        localStorage.setItem('my_discord_channels', JSON.stringify(channels));
-
-        document.getElementById('add-server-modal').classList.add('hidden');
-        document.getElementById('server-name-input').value = '';
-
-        currentMode = 'server';
-        currentServerId = newServer.id;
-        currentChannelId = defaultChannel.id;
-        renderServerList();
-        renderSidebar();
-        renderMainArea();
-      };
-    }
-
-    function renderServerList() {
-      const container = document.getElementById('server-list');
-      container.innerHTML = '';
-
-      servers.forEach(srv => {
-        const btn = document.createElement('button');
-        btn.className = `w-12 h-12 rounded-3xl hover:rounded-2xl transition-all duration-200 flex items-center justify-center font-bold text-white text-lg ${currentServerId === srv.id ? 'bg-indigo-600 rounded-2xl' : 'bg-[#36393f] hover:bg-indigo-500'}`;
-        btn.textContent = srv.icon;
-        btn.onclick = () => {
-          currentMode = 'server';
-          currentServerId = srv.id;
-          const srvChannels = channels.filter(c => c.serverId === srv.id);
-          currentChannelId = srvChannels.length > 0 ? srvChannels[0].id : null;
-          renderServerList();
-          renderSidebar();
-          renderMainArea();
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    // -------------------------------------------------------------
-    // 4. サイドバー & メイン表示
-    // -------------------------------------------------------------
     async function renderSidebar() {
       const content = document.getElementById('sidebar-content');
-      const headerTitle = document.getElementById('sidebar-header-title');
       content.innerHTML = '';
 
-      if (currentMode === 'dm') {
-        headerTitle.textContent = 'ダイレクトメッセージ';
-        const friendsBtn = document.createElement('div');
-        friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === null ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
-        friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
-        friendsBtn.onclick = () => { currentTargetFriendId = null; renderSidebar(); renderMainArea(); };
-        content.appendChild(friendsBtn);
+      const friendsBtn = document.createElement('div');
+      friendsBtn.className = `flex items-center space-x-3 p-2 rounded cursor-pointer ${currentTargetFriendId === null ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
+      friendsBtn.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i><span class="font-medium text-sm">フレンド</span>`;
+      friendsBtn.onclick = () => { currentTargetFriendId = null; renderSidebar(); renderMainArea(); };
+      content.appendChild(friendsBtn);
 
-        const friends = await loadFriends();
-        friends.forEach(friend => {
-          const item = document.createElement('div');
-          item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentTargetFriendId === friend.id ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
-          item.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-xs text-white">${friend.display_name.charAt(0)}</div>
-            <div class="truncate text-sm font-medium">${friend.display_name}</div>
-          `;
-          item.onclick = () => { currentTargetFriendId = friend.id; renderSidebar(); renderMainArea(); };
-          content.appendChild(item);
-        });
-      } else {
-        const activeServer = servers.find(s => s.id === currentServerId);
-        headerTitle.textContent = activeServer ? activeServer.name : 'サーバー';
-
-        const srvChannels = channels.filter(c => c.serverId === currentServerId);
-        srvChannels.forEach(chn => {
-          const item = document.createElement('div');
-          item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-700/50 ${currentChannelId === chn.id ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
-          item.innerHTML = `<i data-lucide="hash" class="w-4 h-4 text-gray-400"></i><span class="text-sm font-medium">${chn.name}</span>`;
-          item.onclick = () => { currentChannelId = chn.id; renderSidebar(); renderMainArea(); };
-          content.appendChild(item);
-        });
-      }
+      const friends = await loadFriends();
+      friends.forEach(friend => {
+        const item = document.createElement('div');
+        item.className = `flex items-center space-x-2 p-2 rounded cursor-pointer ${currentTargetFriendId === friend.id ? 'bg-gray-700/60 text-white' : 'text-gray-300'}`;
+        item.innerHTML = `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-xs text-white">${friend.display_name.charAt(0)}</div><div class="truncate text-sm font-medium">${friend.display_name}</div>`;
+        item.onclick = () => { currentTargetFriendId = friend.id; renderSidebar(); renderMainArea(); };
+        content.appendChild(item);
+      });
       lucide.createIcons();
     }
 
@@ -423,25 +263,15 @@
       const chatView = document.getElementById('chat-view');
       const callButtons = document.getElementById('call-buttons');
 
-      if (currentMode === 'dm' && currentTargetFriendId === null) {
+      if (currentTargetFriendId === null) {
         friendsView.classList.remove('hidden');
         chatView.classList.add('hidden');
         callButtons.classList.add('hidden');
-        document.getElementById('header-title').textContent = 'フレンド一覧';
         renderFriendsList();
       } else {
         friendsView.classList.add('hidden');
         chatView.classList.remove('hidden');
-
-        if (currentMode === 'dm') {
-          callButtons.classList.remove('hidden');
-          const { data: friend } = await supabaseClient.from('profiles').select('*').eq('id', currentTargetFriendId).single();
-          document.getElementById('header-title').textContent = friend ? friend.display_name : 'チャット';
-        } else {
-          callButtons.classList.add('hidden');
-          const chn = channels.find(c => c.id === currentChannelId);
-          document.getElementById('header-title').textContent = chn ? `# ${chn.name}` : 'テキストチャンネル';
-        }
+        callButtons.classList.remove('hidden');
         await loadMessages();
       }
     }
@@ -450,165 +280,114 @@
       const container = document.getElementById('friends-list');
       container.innerHTML = '';
       const friends = await loadFriends();
-
       friends.forEach(f => {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between p-2 rounded hover:bg-gray-700/40 border-t border-gray-700/30';
-        item.innerHTML = `
-          <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">${f.display_name.charAt(0)}</div>
-            <div>
-              <div class="text-sm font-bold text-white">${f.display_name}</div>
-              <div class="text-xs text-gray-400">@${f.user_id_name}</div>
-            </div>
-          </div>
-          <button class="p-2 bg-[#2f3136] hover:bg-gray-600 rounded-full text-gray-200 btn-msg"><i data-lucide="message-square" class="w-4 h-4"></i></button>
-        `;
-        item.querySelector('.btn-msg').onclick = () => { currentTargetFriendId = f.id; renderSidebar(); renderMainArea(); };
+        item.innerHTML = `<div class="flex items-center space-x-3"><div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">${f.display_name.charAt(0)}</div><div><div class="text-sm font-bold text-white">${f.display_name}</div></div></div>`;
         container.appendChild(item);
       });
-      lucide.createIcons();
     }
 
-    // -------------------------------------------------------------
-    // メッセージ追加用描画関数 (重複防止の核心処理)
-    // -------------------------------------------------------------
     function appendMessageElement(msg) {
       const container = document.getElementById('message-container');
-      const senderName = msg.sender ? msg.sender.display_name : (msg.sender_name || 'ユーザー');
-      const isBot = msg.is_bot ? '<span class="bg-indigo-600 text-[10px] text-white font-bold px-1 rounded ml-1">BOT</span>' : '';
-
+      const senderName = msg.sender ? msg.sender.display_name : 'ユーザー';
       const msgEl = document.createElement('div');
       msgEl.className = 'flex items-start space-x-3 p-1 rounded';
-      msgEl.dataset.msgId = msg.id || '';
-      msgEl.innerHTML = `
-        <div class="w-8 h-8 rounded-full ${msg.is_bot ? 'bg-green-600' : 'bg-indigo-500'} flex items-center justify-center font-bold text-white flex-shrink-0">${senderName.charAt(0)}</div>
-        <div>
-          <div class="flex items-center space-x-1">
-            <span class="font-bold text-sm text-white">${senderName}</span>
-            ${isBot}
-            <span class="text-[10px] text-gray-400 ml-2">${new Date(msg.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <div class="text-sm text-gray-200">${msg.content}</div>
-        </div>
-      `;
+      msgEl.innerHTML = `<div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white flex-shrink-0">${senderName.charAt(0)}</div><div><div class="font-bold text-sm text-white">${senderName}</div><div class="text-sm text-gray-200">${msg.content}</div></div>`;
       container.appendChild(msgEl);
       container.scrollTop = container.scrollHeight;
     }
 
-    // 全メッセージ再読み込み（画面切替時のみ）
     async function loadMessages() {
-      const container = document.getElementById('message-container');
-      container.innerHTML = '';
-
-      let messages = [];
-      if (currentMode === 'dm') {
-        const { data } = await supabaseClient.from('messages').select('*, sender:sender_id(*)').or(`and(sender_id.eq.${currentUser.id},target_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},target_id.eq.${currentUser.id})`).order('created_at', { ascending: true });
-        messages = data || [];
-      } else {
-        messages = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
-      }
-
-      messages.forEach(msg => appendMessageElement(msg));
+      document.getElementById('message-container').innerHTML = '';
+      const { data } = await supabaseClient.from('messages').select('*, sender:sender_id(*)').or(`and(sender_id.eq.${currentUser.id},target_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},target_id.eq.${currentUser.id})`).order('created_at', { ascending: true });
+      (data || []).forEach(msg => appendMessageElement(msg));
     }
 
-    // メッセージ送信処理
     document.getElementById('chat-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const input = document.getElementById('chat-input');
       const text = input.value.trim();
-      if (!text) return;
-
+      if (!text || !currentTargetFriendId) return;
       input.value = '';
-
-      if (currentMode === 'dm') {
-        if (!currentTargetFriendId) return;
-        await supabaseClient.from('messages').insert({ sender_id: currentUser.id, target_id: currentTargetFriendId, content: text });
-      } else {
-        if (!currentChannelId) return;
-        const srvMsgs = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
-        
-        const userMsg = { sender_name: currentUser.display_name, content: text, created_at: new Date() };
-        srvMsgs.push(userMsg);
-        appendMessageElement(userMsg);
-
-        if (text === '!ping') {
-          const botMsg = { sender_name: 'Clyde Bot', content: 'pong! 🏓', is_bot: true, created_at: new Date() };
-          srvMsgs.push(botMsg);
-          appendMessageElement(botMsg);
-        } else if (text === '!dice') {
-          const num = Math.floor(Math.random() * 6) + 1;
-          const botMsg = { sender_name: 'Dice Bot', content: `🎲 サイコロの目は **${num}** です！`, is_bot: true, created_at: new Date() };
-          srvMsgs.push(botMsg);
-          appendMessageElement(botMsg);
-        }
-
-        localStorage.setItem(`srv_msg_${currentChannelId}`, JSON.stringify(srvMsgs));
-      }
+      await supabaseClient.from('messages').insert({ sender_id: currentUser.id, target_id: currentTargetFriendId, content: text });
     });
 
-    // -------------------------------------------------------------
-    // 5. リアルタイムリスナー (メッセージ重複防止)
-    // -------------------------------------------------------------
     function setupRealtime() {
       supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
         const newMsg = payload.new;
-        if (currentMode === 'dm' && currentTargetFriendId) {
-          const isRelevant = (newMsg.sender_id === currentUser.id && newMsg.target_id === currentTargetFriendId) ||
-                             (newMsg.sender_id === currentTargetFriendId && newMsg.target_id === currentUser.id);
-          
-          if (isRelevant) {
-            // 送信者プロファイルを取得して追加
-            const { data: senderProfile } = await supabaseClient.from('profiles').select('*').eq('id', newMsg.sender_id).single();
-            newMsg.sender = senderProfile;
-            appendMessageElement(newMsg);
-          }
+        if (currentTargetFriendId && ((newMsg.sender_id === currentUser.id && newMsg.target_id === currentTargetFriendId) || (newMsg.sender_id === currentTargetFriendId && newMsg.target_id === currentUser.id))) {
+          const { data: senderProfile } = await supabaseClient.from('profiles').select('*').eq('id', newMsg.sender_id).single();
+          newMsg.sender = senderProfile;
+          appendMessageElement(newMsg);
         }
       }).subscribe();
     }
 
     // -------------------------------------------------------------
-    // 6. 外部通話サービス (Jitsi Meet 連携)
+    // Agora リアルタイム通話処理
     // -------------------------------------------------------------
-    function initCallEvents() {
-      document.getElementById('btn-start-call').onclick = startJitsiCall;
-      document.getElementById('btn-close-jitsi').onclick = closeJitsiCall;
+    function initAgoraCallEvents() {
+      document.getElementById('btn-start-call').onclick = startAgoraCall;
+      document.getElementById('btn-close-agora').onclick = leaveAgoraCall;
     }
 
-    function startJitsiCall() {
+    async function startAgoraCall() {
       if (!currentTargetFriendId) return;
+      if (AGORA_APP_ID === "YOUR_AGORA_APP_ID_HERE") {
+        return alert("Agora Consoleで取得した App ID を JSコード内の AGORA_APP_ID に設定してください。");
+      }
 
-      // お互いに一意なルーム名を生成 (ユーザーIDの昇順結合)
+      // ルーム名の定義
       const ids = [currentUser.id, currentTargetFriendId].sort();
-      const roomName = `discord_clone_call_${ids[0]}_${ids[1]}`;
+      const channelName = `call_${ids[0]}_${ids[1]}`;
 
-      document.getElementById('jitsi-modal').classList.remove('hidden');
+      document.getElementById('agora-modal').classList.remove('hidden');
 
-      const domain = 'meet.jit.si';
-      const options = {
-        roomName: roomName,
-        width: '100%',
-        height: '100%',
-        parentNode: document.getElementById('jitsi-container'),
-        userInfo: {
-          displayName: currentUser.display_name
-        },
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: false
+      // Agora RTC クライアント作成
+      agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+      // 相手の映像/音声を受信したときの処理
+      agoraClient.on("user-published", async (user, mediaType) => {
+        await agoraClient.subscribe(user, mediaType);
+        if (mediaType === "video") {
+          const remoteVideoTrack = user.videoTrack;
+          remoteVideoTrack.play("remote-player");
         }
-      };
+        if (mediaType === "audio") {
+          const remoteAudioTrack = user.audioTrack;
+          remoteAudioTrack.play();
+        }
+      });
 
-      if (jitsiApi) jitsiApi.dispose();
-      jitsiApi = new JitsiMeetExternalAPI(domain, options);
+      // 相手が退出したときの処理
+      agoraClient.on("user-unpublished", user => {
+        document.getElementById("remote-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>';
+      });
+
+      try {
+        // チャンネル参加
+        await agoraClient.join(AGORA_APP_ID, channelName, null, currentUser.id);
+
+        // マイクとカメラを取得して送信
+        [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        localVideoTrack.play("local-player");
+
+        await agoraClient.publish([localAudioTrack, localVideoTrack]);
+      } catch (err) {
+        console.error("Agora Error:", err);
+        alert("通話接続エラー: " + err.message);
+      }
     }
 
-    function closeJitsiCall() {
-      if (jitsiApi) {
-        jitsiApi.dispose();
-        jitsiApi = null;
-      }
-      document.getElementById('jitsi-modal').classList.add('hidden');
+    async function leaveAgoraCall() {
+      if (localAudioTrack) { localAudioTrack.close(); localAudioTrack = null; }
+      if (localVideoTrack) { localVideoTrack.close(); localVideoTrack = null; }
+      if (agoraClient) { await agoraClient.leave(); agoraClient = null; }
+
+      document.getElementById('agora-modal').classList.add('hidden');
+      document.getElementById("local-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">自分</span>';
+      document.getElementById("remote-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>';
     }
   </script>
 </body>
