@@ -16,6 +16,7 @@
 <body class="bg-[#36393f] text-gray-200 select-none font-sans antialiased overflow-hidden">
 
   <div id="app" class="flex h-screen w-screen relative">
+    <!-- ログイン / 登録 画面 -->
     <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2f3136]">
       <div class="bg-[#36393f] p-8 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h1 class="text-2xl font-bold text-white mb-2 text-center" id="auth-title">アカウント作成</h1>
@@ -42,7 +43,9 @@
       </div>
     </div>
 
+    <!-- メイン画面 -->
     <div id="main-screen" class="flex w-full h-full hidden">
+      <!-- サーバーアイコン一覧 (最左) -->
       <div class="w-18 bg-[#202225] flex flex-col items-center py-3 space-y-2 z-20 flex-shrink-0 border-r border-[#202225]">
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
@@ -56,15 +59,14 @@
         </button>
       </div>
 
+      <!-- サイドバー (チャンネル/DMリスト) -->
       <div class="w-60 bg-[#2f3136] flex flex-col flex-shrink-0 border-r border-[#202225]/40">
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between font-bold text-white shadow-sm">
           <span id="sidebar-header-title">ダイレクトメッセージ</span>
-          <button id="btn-add-channel" title="チャンネル作成" class="text-gray-400 hover:text-white hidden">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-          </button>
         </div>
         <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 space-y-0.5"></div>
         
+        <!-- ユーザー情報表示フッター -->
         <div class="h-14 bg-[#292b2f] px-2 flex items-center justify-between">
           <div class="flex items-center space-x-2 overflow-hidden p-1">
             <div id="my-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm text-white">U</div>
@@ -84,13 +86,16 @@
         </div>
       </div>
 
+      <!-- メインエリア -->
       <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
+        <!-- ヘッダー -->
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
           <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
             <i data-lucide="users" class="w-5 h-5 text-gray-400" id="header-icon"></i>
             <span id="header-title">フレンド一覧</span>
           </div>
 
+          <!-- 通話ボタン (DM選択時のみ表示) -->
           <div id="call-buttons" class="flex items-center space-x-2 hidden">
             <button id="btn-start-audio-call" title="音声通話を開始" class="p-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-full transition">
               <i data-lucide="phone" class="w-5 h-5"></i>
@@ -102,6 +107,7 @@
         </div>
 
         <div class="flex-1 flex overflow-hidden">
+          <!-- フレンド表示エリア -->
           <div id="friends-view" class="flex-1 flex flex-col p-6 overflow-y-auto">
             <div class="bg-[#2f3136] p-4 rounded-lg mb-6 border border-gray-700">
               <h3 class="text-sm font-bold text-white mb-1">フレンドに追加</h3>
@@ -115,6 +121,7 @@
             <div id="friends-list" class="space-y-1"></div>
           </div>
 
+          <!-- チャット表示エリア -->
           <div id="chat-view" class="flex-1 flex flex-col hidden h-full">
             <div id="message-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
             <div class="p-4 bg-[#36393f]">
@@ -130,6 +137,7 @@
       </div>
     </div>
 
+    <!-- サーバー作成モーダル -->
     <div id="add-server-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 hidden">
       <div class="bg-[#36393f] p-6 rounded-lg shadow-2xl w-96 border border-gray-700">
         <h2 class="text-xl font-bold text-white text-center mb-4">サーバーの作成</h2>
@@ -141,6 +149,7 @@
       </div>
     </div>
 
+    <!-- 通話モーダル (WebRTC) -->
     <div id="call-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
       <div class="bg-[#2f3136] p-6 rounded-2xl shadow-2xl w-[600px] border border-gray-700 flex flex-col items-center">
         <h2 id="call-status-title" class="text-xl font-bold text-white mb-4">通話中...</h2>
@@ -150,6 +159,7 @@
           <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-32 h-24 bg-gray-800 rounded-lg border-2 border-indigo-500 object-cover"></video>
         </div>
 
+        <!-- 着信時コントロール -->
         <div id="incoming-call-controls" class="flex gap-4 hidden">
           <button id="btn-accept-call" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-full font-bold flex items-center space-x-2">
             <i data-lucide="phone-call" class="w-5 h-5"></i><span>応答</span>
@@ -159,14 +169,15 @@
           </button>
         </div>
 
+        <!-- 通話中コントロール -->
         <div id="active-call-controls" class="flex gap-4">
-          <button id="btn-toggle-mic" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition">
+          <button id="btn-toggle-mic" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition" title="マイクON/OFF">
             <i data-lucide="mic" class="w-6 h-6"></i>
           </button>
-          <button id="btn-toggle-cam" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition">
+          <button id="btn-toggle-cam" class="p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition" title="カメラON/OFF">
             <i data-lucide="video" class="w-6 h-6"></i>
           </button>
-          <button id="btn-end-call" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition">
+          <button id="btn-end-call" class="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition" title="切断">
             <i data-lucide="phone-off" class="w-6 h-6"></i>
           </button>
         </div>
@@ -202,6 +213,8 @@
     let localStream = null;
     let callChannel = null;
     let incomingSignalData = null;
+    let isMicMuted = false;
+    let isCamDisabled = false;
 
     const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -273,10 +286,54 @@
       document.getElementById('my-avatar').textContent = currentUser.display_name.charAt(0).toUpperCase();
 
       initServerEvents();
+      initFriendEvents();
       renderServerList();
       renderSidebar();
       renderMainArea();
       setupRealtime();
+    }
+
+    // -------------------------------------------------------------
+    // フレンド追加イベント
+    // -------------------------------------------------------------
+    function initFriendEvents() {
+      const addForm = document.getElementById('add-friend-form');
+      addForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('friend-id-input');
+        const targetUsername = input.value.trim();
+        if (!targetUsername) return;
+
+        if (targetUsername === currentUser.user_id_name) {
+          return alert('自分自身にフレンド申請は送れません');
+        }
+
+        const { data: targetUser, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', targetUsername).single();
+        if (error || !targetUser) {
+          return alert('指定されたアカウントIDのユーザーが見つかりません');
+        }
+
+        const { data: existing } = await supabaseClient.from('friendships')
+          .select('*')
+          .or(`and(from_id.eq.${currentUser.id},to_id.eq.${targetUser.id}),and(from_id.eq.${targetUser.id},to_id.eq.${currentUser.id})`);
+
+        if (existing && existing.length > 0) {
+          return alert('すでにフレンド関係が存在します');
+        }
+
+        const { error: insertError } = await supabaseClient.from('friendships').insert({
+          from_id: currentUser.id,
+          to_id: targetUser.id
+        });
+
+        if (insertError) {
+          alert('フレンド申請エラー: ' + insertError.message);
+        } else {
+          alert(`${targetUser.display_name} にフレンド申請を送りました！`);
+          input.value = '';
+          renderFriendsList();
+        }
+      });
     }
 
     // -------------------------------------------------------------
@@ -305,7 +362,6 @@
         servers.push(newServer);
         localStorage.setItem('my_discord_servers', JSON.stringify(servers));
 
-        // デフォルトの一般チャンネルを作成
         const defaultChannel = { id: 'chn_' + Date.now(), serverId: newServer.id, name: '一般' };
         channels.push(defaultChannel);
         localStorage.setItem('my_discord_channels', JSON.stringify(channels));
@@ -453,7 +509,6 @@
         const { data } = await supabaseClient.from('messages').select('*, sender:sender_id(*)').or(`and(sender_id.eq.${currentUser.id},target_id.eq.${currentTargetFriendId}),and(sender_id.eq.${currentTargetFriendId},target_id.eq.${currentUser.id})`).order('created_at', { ascending: true });
         messages = data || [];
       } else {
-        // サーバーメッセージ (ローカル保持)
         messages = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
       }
 
@@ -494,7 +549,6 @@
         const srvMsgs = JSON.parse(localStorage.getItem(`srv_msg_${currentChannelId}`)) || [];
         srvMsgs.push({ sender_name: currentUser.display_name, content: text, created_at: new Date() });
 
-        // ★ 自動応答ボットの仕組み (!ping / !dice)
         if (text === '!ping') {
           srvMsgs.push({ sender_name: 'Clyde Bot', content: 'pong! 🏓', is_bot: true, created_at: new Date() });
         } else if (text === '!dice') {
@@ -510,16 +564,18 @@
     });
 
     // -------------------------------------------------------------
-    // 5. WebRTC & Realtime 通話
+    // 5. WebRTC & Realtime 通話 (完全修復版)
     // -------------------------------------------------------------
     function setupRealtime() {
+      // メッセージのリアルタイム受信
       supabaseClient.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         if (currentMode === 'dm') loadMessages();
       }).subscribe();
 
+      // WebRTC シグナリングチャンネル
       callChannel = supabaseClient.channel('call_signaling');
       callChannel.on('broadcast', { event: 'call-signal' }, async ({ payload }) => {
-        if (payload.targetId !== currentUser.id) return;
+        if (!payload || payload.targetId !== currentUser.id) return;
 
         if (payload.type === 'offer') {
           incomingSignalData = payload;
@@ -530,25 +586,42 @@
           await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           document.getElementById('call-status-title').textContent = '通話中';
         } else if (payload.type === 'candidate' && peerConnection) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          } catch (e) {
+            console.error('ICE candidate error', e);
+          }
         } else if (payload.type === 'hangup' || payload.type === 'reject') {
+          alert('通話が終了または拒否されました');
           closeCall();
         }
       }).subscribe();
 
+      // イベントリスナー設定
       document.getElementById('btn-start-audio-call').onclick = () => startCall(false);
       document.getElementById('btn-start-video-call').onclick = () => startCall(true);
       document.getElementById('btn-accept-call').onclick = acceptCall;
-      document.getElementById('btn-reject-call').onclick = () => { callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'reject', senderId: currentUser.id, targetId: incomingSignalData.senderId } }); closeCall(); };
-      document.getElementById('btn-end-call').onclick = () => {
-        const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
-        if (tid) callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'hangup', senderId: currentUser.id, targetId: tid } });
+      document.getElementById('btn-reject-call').onclick = () => {
+        if (incomingSignalData) {
+          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'reject', senderId: currentUser.id, targetId: incomingSignalData.senderId } });
+        }
         closeCall();
       };
+      document.getElementById('btn-end-call').onclick = () => {
+        const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
+        if (tid) {
+          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'hangup', senderId: currentUser.id, targetId: tid } });
+        }
+        closeCall();
+      };
+
+      // マイク & カメラ ON/OFF トグルボタン
+      document.getElementById('btn-toggle-mic').onclick = toggleMic;
+      document.getElementById('btn-toggle-cam').onclick = toggleCam;
     }
 
     async function startCall(isVideo) {
-      if (!currentTargetFriendId) return;
+      if (!currentTargetFriendId) return alert('通話する相手を選択してください');
       openCallModal('呼び出し中...', isVideo);
       document.getElementById('active-call-controls').classList.remove('hidden');
       document.getElementById('incoming-call-controls').classList.add('hidden');
@@ -562,8 +635,22 @@
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
-        callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'offer', senderId: currentUser.id, targetId: currentTargetFriendId, senderName: currentUser.display_name, sdp: offer, isVideo: isVideo } });
-      } catch (err) { alert('デバイスが開けません'); closeCall(); }
+        callChannel.send({
+          type: 'broadcast',
+          event: 'call-signal',
+          payload: {
+            type: 'offer',
+            senderId: currentUser.id,
+            targetId: currentTargetFriendId,
+            senderName: currentUser.display_name,
+            sdp: offer,
+            isVideo: isVideo
+          }
+        });
+      } catch (err) {
+        alert('マイクまたはカメラのアクセスに失敗しました: ' + err.message);
+        closeCall();
+      }
     }
 
     async function acceptCall() {
@@ -581,9 +668,21 @@
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
-        callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'answer', senderId: currentUser.id, targetId: incomingSignalData.senderId, sdp: answer } });
+        callChannel.send({
+          type: 'broadcast',
+          event: 'call-signal',
+          payload: {
+            type: 'answer',
+            senderId: currentUser.id,
+            targetId: incomingSignalData.senderId,
+            sdp: answer
+          }
+        });
         document.getElementById('call-status-title').textContent = '通話中';
-      } catch (err) { closeCall(); }
+      } catch (err) {
+        alert('通話の応答に失敗しました: ' + err.message);
+        closeCall();
+      }
     }
 
     function createPeerConnection() {
@@ -591,10 +690,19 @@
       pc.onicecandidate = (e) => {
         if (e.candidate) {
           const tid = currentTargetFriendId || (incomingSignalData ? incomingSignalData.senderId : null);
-          callChannel.send({ type: 'broadcast', event: 'call-signal', payload: { type: 'candidate', senderId: currentUser.id, targetId: tid, candidate: e.candidate } });
+          if (tid) {
+            callChannel.send({
+              type: 'broadcast',
+              event: 'call-signal',
+              payload: { type: 'candidate', senderId: currentUser.id, targetId: tid, candidate: e.candidate }
+            });
+          }
         }
       };
-      pc.ontrack = (e) => document.getElementById('remote-video').srcObject = e.streams[0];
+      pc.ontrack = (e) => {
+        const remoteVideo = document.getElementById('remote-video');
+        if (remoteVideo) remoteVideo.srcObject = e.streams[0];
+      };
       return pc;
     }
 
@@ -602,11 +710,57 @@
       document.getElementById('call-status-title').textContent = title;
       document.getElementById('call-modal').classList.remove('hidden');
       document.getElementById('video-container').style.display = isVideo ? 'flex' : 'none';
+      isMicMuted = false;
+      isCamDisabled = false;
+      updateControlButtons();
+    }
+
+    function toggleMic() {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          isMicMuted = !isMicMuted;
+          audioTrack.enabled = !isMicMuted;
+          updateControlButtons();
+        }
+      }
+    }
+
+    function toggleCam() {
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          isCamDisabled = !isCamDisabled;
+          videoTrack.enabled = !isCamDisabled;
+          updateControlButtons();
+        }
+      }
+    }
+
+    function updateControlButtons() {
+      const micBtn = document.getElementById('btn-toggle-mic');
+      const camBtn = document.getElementById('btn-toggle-cam');
+
+      if (micBtn) micBtn.className = `p-3 rounded-full transition ${isMicMuted ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`;
+      if (camBtn) camBtn.className = `p-3 rounded-full transition ${isCamDisabled ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'}`;
     }
 
     function closeCall() {
-      if (peerConnection) { peerConnection.close(); peerConnection = null; }
-      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+
+      const localVideo = document.getElementById('local-video');
+      const remoteVideo = document.getElementById('remote-video');
+      if (localVideo) localVideo.srcObject = null;
+      if (remoteVideo) remoteVideo.srcObject = null;
+
+      incomingSignalData = null;
       document.getElementById('call-modal').classList.add('hidden');
     }
   </script>
