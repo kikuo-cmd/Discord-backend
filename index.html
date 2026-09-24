@@ -273,6 +273,25 @@
         }
       }).subscribe();
     }
+
+    // Supabase単体接続テスト
+async function testConnection() {
+  try {
+    const { data, error } = await supabaseClient.from('profiles').select('count', { count: 'exact' });
+    if (error) {
+      console.error('Supabaseエラー詳細:', error);
+      alert('Supabaseエラー: ' + error.message);
+    } else {
+      console.log('接続成功！データ件数:', data);
+      alert('Supabaseとの通信に成功しました！');
+    }
+  } catch (err) {
+    console.error('Fetch例外発生:', err);
+    alert('Fetch例外: ' + err.message);
+  }
+}
+
+testConnection();
   </script>
 </body>
 </html>
