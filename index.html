@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Discord Clone with Agora RTC</title>
+  <title>Discord Clone (Simple)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Agora Web SDK v4 -->
-  <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.20.0.js"></script>
   <style>
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #2f3136; }
@@ -50,8 +48,6 @@
         <button id="btn-dm-view" class="w-12 h-12 rounded-3xl bg-[#36393f] hover:bg-indigo-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-white">
           <i data-lucide="message-square" class="w-6 h-6"></i>
         </button>
-        <div class="w-8 h-[2px] bg-[#36393f] rounded"></div>
-        <div id="server-list" class="flex flex-col space-y-2 w-full items-center"></div>
       </div>
 
       <!-- サイドバー -->
@@ -76,17 +72,10 @@
 
       <!-- メインエリア -->
       <div class="flex-1 flex flex-col bg-[#36393f] relative overflow-hidden">
-        <!-- ヘッダー -->
         <div class="h-12 border-b border-[#202225] px-4 flex items-center justify-between shadow-sm">
-          <div class="flex items-center space-x-2 text-white font-bold" id="header-title-container">
+          <div class="flex items-center space-x-2 text-white font-bold">
             <i data-lucide="users" class="w-5 h-5 text-gray-400"></i>
             <span id="header-title">フレンド一覧</span>
-          </div>
-          <div id="call-buttons" class="flex items-center space-x-2 hidden">
-            <button id="btn-start-call" title="Agora通話開始" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium flex items-center space-x-1.5 transition">
-              <i data-lucide="phone-call" class="w-4 h-4"></i>
-              <span>通話開始</span>
-            </button>
           </div>
         </div>
 
@@ -116,37 +105,9 @@
         </div>
       </div>
     </div>
-
-    <!-- Agoraビデオ通話モーダル -->
-    <div id="agora-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 hidden">
-      <div class="bg-[#2f3136] p-4 rounded-2xl shadow-2xl w-[90vw] max-w-4xl h-[80vh] border border-gray-700 flex flex-col">
-        <div class="flex justify-between items-center mb-2 px-2">
-          <h2 class="text-lg font-bold text-white">Agora ビデオ通話</h2>
-          <button id="btn-close-agora" class="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center space-x-1 text-xs font-bold">
-            <i data-lucide="phone-off" class="w-4 h-4"></i>
-            <span>通話を終了</span>
-          </button>
-        </div>
-        <!-- ビデオ画面配置エリア -->
-        <div class="flex-1 grid grid-cols-2 gap-4 bg-black/50 p-4 rounded-xl overflow-hidden">
-          <div id="local-player" class="w-full h-full bg-gray-900 rounded-lg relative overflow-hidden flex items-center justify-center">
-            <span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">自分</span>
-          </div>
-          <div id="remote-player" class="w-full h-full bg-gray-900 rounded-lg relative overflow-hidden flex items-center justify-center">
-            <span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script>
-    // -------------------------------------------------------------
-    // Agora & Supabase 設定
-    // -------------------------------------------------------------
-    // ★ご自身の Agora App ID に置き換えてください
-    const AGORA_APP_ID = "9e8fb2f3c271483b8586c1659c93dccd";
-
     const SUPABASE_URL = 'https://aaedzwnhwfhoyncunarl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZWR6d25od2Zob3luY3VuYXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTgwOTUsImV4cCI6MjEwNTQ3NDA5NX0.7trNhAI5OAJ0coOt4bNx-NAg5zhYvAWgG7QRoM6friI';
 
@@ -154,13 +115,7 @@
 
     const SESSION_KEY = 'my_discord_session';
     let currentUser = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
-    let currentMode = 'dm';
     let currentTargetFriendId = null;
-
-    // Agora RTC クライアント変数の保持
-    let agoraClient = null;
-    let localAudioTrack = null;
-    let localVideoTrack = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
@@ -168,7 +123,6 @@
       if (currentUser) showMainApp();
     });
 
-    // 認証
     function initAuth() {
       const authForm = document.getElementById('auth-form');
       const toggleBtn = document.getElementById('auth-toggle-btn');
@@ -189,11 +143,11 @@
 
         if (isSignUpMode) {
           const { data, error } = await supabaseClient.from('profiles').insert({ user_id_name: username, display_name: displayName, password }).select().single();
-          if (error) return alert(error.message);
+          if (error) return alert('エラー: ' + error.message);
           currentUser = data;
         } else {
           const { data, error } = await supabaseClient.from('profiles').select('*').eq('user_id_name', username).eq('password', password).single();
-          if (error || !data) return alert('ログイン失敗');
+          if (error || !data) return alert('ログイン失敗: IDまたはパスワードが違います');
           currentUser = data;
         }
         localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
@@ -211,7 +165,6 @@
       document.getElementById('my-username').textContent = '@' + currentUser.user_id_name;
 
       initFriendEvents();
-      initAgoraCallEvents();
       renderSidebar();
       renderMainArea();
       setupRealtime();
@@ -261,17 +214,14 @@
     async function renderMainArea() {
       const friendsView = document.getElementById('friends-view');
       const chatView = document.getElementById('chat-view');
-      const callButtons = document.getElementById('call-buttons');
 
       if (currentTargetFriendId === null) {
         friendsView.classList.remove('hidden');
         chatView.classList.add('hidden');
-        callButtons.classList.add('hidden');
         renderFriendsList();
       } else {
         friendsView.classList.add('hidden');
         chatView.classList.remove('hidden');
-        callButtons.classList.remove('hidden');
         await loadMessages();
       }
     }
@@ -322,72 +272,6 @@
           appendMessageElement(newMsg);
         }
       }).subscribe();
-    }
-
-    // -------------------------------------------------------------
-    // Agora リアルタイム通話処理
-    // -------------------------------------------------------------
-    function initAgoraCallEvents() {
-      document.getElementById('btn-start-call').onclick = startAgoraCall;
-      document.getElementById('btn-close-agora').onclick = leaveAgoraCall;
-    }
-
-    async function startAgoraCall() {
-      if (!currentTargetFriendId) return;
-      if (AGORA_APP_ID === "YOUR_AGORA_APP_ID_HERE") {
-        return alert("Agora Consoleで取得した App ID を JSコード内の AGORA_APP_ID に設定してください。");
-      }
-
-      // ルーム名の定義
-      const ids = [currentUser.id, currentTargetFriendId].sort();
-      const channelName = `call_${ids[0]}_${ids[1]}`;
-
-      document.getElementById('agora-modal').classList.remove('hidden');
-
-      // Agora RTC クライアント作成
-      agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-      // 相手の映像/音声を受信したときの処理
-      agoraClient.on("user-published", async (user, mediaType) => {
-        await agoraClient.subscribe(user, mediaType);
-        if (mediaType === "video") {
-          const remoteVideoTrack = user.videoTrack;
-          remoteVideoTrack.play("remote-player");
-        }
-        if (mediaType === "audio") {
-          const remoteAudioTrack = user.audioTrack;
-          remoteAudioTrack.play();
-        }
-      });
-
-      // 相手が退出したときの処理
-      agoraClient.on("user-unpublished", user => {
-        document.getElementById("remote-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>';
-      });
-
-      try {
-        // チャンネル参加
-        await agoraClient.join(AGORA_APP_ID, channelName, null, currentUser.id);
-
-        // マイクとカメラを取得して送信
-        [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-        localVideoTrack.play("local-player");
-
-        await agoraClient.publish([localAudioTrack, localVideoTrack]);
-      } catch (err) {
-        console.error("Agora Error:", err);
-        alert("通話接続エラー: " + err.message);
-      }
-    }
-
-    async function leaveAgoraCall() {
-      if (localAudioTrack) { localAudioTrack.close(); localAudioTrack = null; }
-      if (localVideoTrack) { localVideoTrack.close(); localVideoTrack = null; }
-      if (agoraClient) { await agoraClient.leave(); agoraClient = null; }
-
-      document.getElementById('agora-modal').classList.add('hidden');
-      document.getElementById("local-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">自分</span>';
-      document.getElementById("remote-player").innerHTML = '<span class="text-xs text-gray-500 absolute bottom-2 left-2 z-10 bg-black/60 px-2 py-1 rounded">相手（接続待機中）</span>';
     }
   </script>
 </body>
